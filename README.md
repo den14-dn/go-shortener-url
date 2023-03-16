@@ -32,3 +32,7 @@ git fetch template && git checkout template/main .github
 Например в ветке с названием `iter4` запустятся автотесты для итераций с первой по четвертую.
 
 При мерже ветки с итерацией в основную ветку (`main`) будут запускаться все автотесты.
+
+C:/projects/golang/go-shortener-url/test/shortenertest-windows-amd64.exe --test.v --test.run=^TestIteration1$ --binary-path=C:/projects/golang/go-shortener-url/cmd/shortener/shortener.exe
+
+go vet --vettool="C:/projects/golang/go-shortener-url/test/statictest-windows-amd64.exe" ./...
