@@ -9,9 +9,8 @@ import (
 )
 
 func main() {
-	st := storage.NewMemStorage()
-	h := app.NewHandler(st)
-	http.HandleFunc("/", h.HandleRequest)
+	app.NewHandler(storage.NewMemStorage())
+	http.HandleFunc("/", app.HandleRequest)
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Printf("http server can't start: %v", err)
 	}

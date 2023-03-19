@@ -1,6 +1,8 @@
 package app
 
 import (
+	memStorage "go-shortener-url/internal/storage"
+
 	"fmt"
 	"io"
 	"net/http"
@@ -10,31 +12,33 @@ import (
 	"github.com/speps/go-hashids/v2"
 )
 
+var storage managerStorage
+
 type managerStorage interface {
 	Add(id, value string)
 	Get(id string) (string, bool)
 }
 
-type Handler struct {
-	s managerStorage
+func NewHandler(s managerStorage) {
+	storage = s
 }
 
-func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
+func HandleRequest(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		handleAsPost(w, r, h)
+		handleAsPost(w, r)
 	case http.MethodGet:
-		handleAsGet(w, r, h)
+		handleAsGet(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func NewHandler(s managerStorage) *Handler {
-	return &Handler{s: s}
-}
+func handleAsPost(w http.ResponseWriter, r *http.Request) {
+	if storage == nil {
+		NewHandler(memStorage.NewMemStorage())
+	}
 
-func handleAsPost(w http.ResponseWriter, r *http.Request, h *Handler) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -53,10 +57,11 @@ func handleAsPost(w http.ResponseWriter, r *http.Request, h *Handler) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.s.Add(id, strURL)
+	storage.Add(id, strURL)
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://localhost:8080/%v", id)))
+	shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
+	w.Write([]byte(shortURL))
 }
 
 func shortenURL(fullURL string) (string, error) {
@@ -73,10 +78,14 @@ func shortenURL(fullURL string) (string, error) {
 	return id, nil
 }
 
-func handleAsGet(w http.ResponseWriter, r *http.Request, h *Handler) {
+func handleAsGet(w http.ResponseWriter, r *http.Request) {
+	if storage == nil {
+		NewHandler(memStorage.NewMemStorage())
+	}
+
 	arr := strings.Split(r.RequestURI, "/")
 	id := arr[len(arr)-1]
-	fullURL, ok := h.s.Get(id)
+	fullURL, ok := storage.Get(id)
 	if !ok {
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
