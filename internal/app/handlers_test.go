@@ -44,7 +44,7 @@ func TestHandleAsPost(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/", tt.body)
 
 			w := httptest.NewRecorder()
-			handleAsPost(w, request)
+			HandleAsPost(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
@@ -93,7 +93,7 @@ func TestHandleAsGet(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
-			handleAsGet(w, request)
+			HandleAsGet(w, request)
 			result := w.Result()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)

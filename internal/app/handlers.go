@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/speps/go-hashids/v2"
 )
 
@@ -23,18 +23,7 @@ func NewHandler(s managerStorage) {
 	storage = s
 }
 
-func HandleRequest(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		handleAsPost(w, r)
-	case http.MethodGet:
-		handleAsGet(w, r)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func handleAsPost(w http.ResponseWriter, r *http.Request) {
+func HandleAsPost(w http.ResponseWriter, r *http.Request) {
 	if storage == nil {
 		NewHandler(memStorage.NewMemStorage())
 	}
@@ -78,13 +67,15 @@ func shortenURL(fullURL string) (string, error) {
 	return id, nil
 }
 
-func handleAsGet(w http.ResponseWriter, r *http.Request) {
+func HandleAsGet(w http.ResponseWriter, r *http.Request) {
 	if storage == nil {
 		NewHandler(memStorage.NewMemStorage())
 	}
-
-	arr := strings.Split(r.RequestURI, "/")
-	id := arr[len(arr)-1]
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "ID param is missed", http.StatusBadRequest)
+		return
+	}
 	fullURL, ok := storage.Get(id)
 	if !ok {
 		http.Error(w, "URL not found", http.StatusNotFound)
