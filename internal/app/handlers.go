@@ -28,12 +28,14 @@ func HandleAsPost(w http.ResponseWriter, r *http.Request) {
 		NewHandler(memStorage.NewMemStorage())
 	}
 
+	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	strURL := string(body)
+	fmt.Println(strURL)
 
 	_, err = url.ParseRequestURI(strURL)
 	if err != nil {
