@@ -4,8 +4,8 @@ type MemStorage struct {
 	urls map[string]string
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{
+func NewMemStorage() MemStorage {
+	return MemStorage{
 		urls: make(map[string]string),
 	}
 }

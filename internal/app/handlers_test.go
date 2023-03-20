@@ -1,8 +1,6 @@
 package app
 
 import (
-	memStorage "go-shortener-url/internal/storage"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,17 +39,19 @@ func TestHandleAsPost(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/", tt.body)
+			r := NewRouter()
+			ts := httptest.NewServer(r)
+			defer ts.Close()
 
-			w := httptest.NewRecorder()
-			HandleAsPost(w, request)
-			result := w.Result()
-
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-
-			resBody, err := io.ReadAll(result.Body)
+			req, err := http.NewRequest(http.MethodPost, ts.URL, tt.body)
 			require.NoError(t, err)
-			err = result.Body.Close()
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
+
+			resBody, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			err = resp.Body.Close()
 			require.NoError(t, err)
 			assert.Contains(t, string(resBody), tt.want.response)
 		})
@@ -63,44 +63,51 @@ func TestHandleAsGet(t *testing.T) {
 		statusCode int
 		location   string
 	}
-	type fill struct {
-		id      string
-		fullURL string
-	}
 	tests := []struct {
-		name    string
-		fill    fill
-		request string
-		want    want
+		name     string
+		bodyPost string
+		request  string
+		want     want
 	}{
 		{
-			name:    "positive test GET",
-			fill:    fill{id: "1", fullURL: "http://example.com"},
-			request: "/1",
-			want:    want{statusCode: 307, location: "http://example.com"},
+			name:     "positive test GET",
+			bodyPost: "http://example.com",
+			request:  "/BJJur6sqdF6Z",
+			want:     want{statusCode: 307, location: "http://example.com"},
 		},
 		{
-			name:    "negative test, not found URL",
-			fill:    fill{id: "1", fullURL: "http://example.com"},
-			request: "/123",
-			want:    want{statusCode: 404, location: ""},
+			name:     "negative test, not found URL",
+			bodyPost: "http://b0alhb3wxki2.biz/utno35cm95iz/viiqj",
+			request:  "/123",
+			want:     want{statusCode: 404, location: ""},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			NewHandler(memStorage.NewMemStorage())
-			storage.Add(tt.fill.id, tt.fill.fullURL)
+			r := NewRouter()
+			ts := httptest.NewServer(r)
+			defer ts.Close()
 
-			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
-			w := httptest.NewRecorder()
-			HandleAsGet(w, request)
-			result := w.Result()
-
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			assert.Equal(t, tt.want.location, result.Header.Get("Location"))
-
-			err := result.Body.Close()
+			req, err := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader(tt.bodyPost))
 			require.NoError(t, err)
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			req, err = http.NewRequest(http.MethodGet, ts.URL+tt.request, nil)
+			require.NoError(t, err)
+
+			client := &http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+			resp, err = client.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
+			assert.Equal(t, tt.want.location, resp.Header.Get("Location"))
 		})
 	}
 }

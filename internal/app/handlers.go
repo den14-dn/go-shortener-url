@@ -1,7 +1,7 @@
 package app
 
 import (
-	memStorage "go-shortener-url/internal/storage"
+	"go-shortener-url/internal/storage"
 
 	"fmt"
 	"io"
@@ -12,47 +12,50 @@ import (
 	"github.com/speps/go-hashids/v2"
 )
 
-var storage managerStorage
-
 type managerStorage interface {
 	Add(id, value string)
 	Get(id string) (string, bool)
 }
 
-func NewHandler(s managerStorage) {
-	storage = s
+type Handler struct {
+	*chi.Mux
+	storage storage.MemStorage
 }
 
-func HandleAsPost(w http.ResponseWriter, r *http.Request) {
-	if storage == nil {
-		NewHandler(memStorage.NewMemStorage())
+func NewHandler(s storage.MemStorage) *Handler {
+	return &Handler{
+		Mux:     chi.NewMux(),
+		storage: s,
 	}
+}
 
-	defer r.Body.Close()
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (h *Handler) CreateShortID() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		strURL := string(body)
+
+		_, err = url.ParseRequestURI(strURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		id, err := shortenURL(strURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		h.storage.Add(id, strURL)
+
+		w.WriteHeader(http.StatusCreated)
+		shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
+		w.Write([]byte(shortURL))
 	}
-	strURL := string(body)
-	fmt.Println(strURL)
-
-	_, err = url.ParseRequestURI(strURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	id, err := shortenURL(strURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	storage.Add(id, strURL)
-
-	w.WriteHeader(http.StatusCreated)
-	shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
-	w.Write([]byte(shortURL))
 }
 
 func shortenURL(fullURL string) (string, error) {
@@ -69,19 +72,28 @@ func shortenURL(fullURL string) (string, error) {
 	return id, nil
 }
 
-func HandleAsGet(w http.ResponseWriter, r *http.Request) {
-	if storage == nil {
-		NewHandler(memStorage.NewMemStorage())
+func (h *Handler) GetFullURL() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			http.Error(w, "ID param is missed", http.StatusBadRequest)
+			return
+		}
+		fullURL, ok := h.storage.Get(id)
+		if !ok {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+		http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
 	}
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "ID param is missed", http.StatusBadRequest)
-		return
-	}
-	fullURL, ok := storage.Get(id)
-	if !ok {
-		http.Error(w, "URL not found", http.StatusNotFound)
-		return
-	}
-	http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
+}
+
+func NewRouter() chi.Router {
+	h := NewHandler(storage.NewMemStorage())
+	r := chi.NewRouter()
+	r.Route("/", func(r chi.Router) {
+		r.Get("/{id}", h.GetFullURL())
+		r.Post("/", h.CreateShortID())
+	})
+	return r
 }
