@@ -10,6 +10,6 @@ import (
 func main() {
 	r := app.NewRouter()
 	if err := http.ListenAndServe(":8080", r); err != nil {
-		fmt.Printf("http server can't start: %v", err)
+		fmt.Println(err)
 	}
 }
