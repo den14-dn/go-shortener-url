@@ -1,6 +1,8 @@
 package app
 
 import (
+	"go-shortener-url/internal/config"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -37,9 +39,11 @@ func TestCreateShortID(t *testing.T) {
 			want: want{statusCode: 400, response: "invalid URI for request"},
 		},
 	}
+	cfg, err := config.NewConfig()
+	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter()
+			r := NewRouter(cfg)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -82,9 +86,11 @@ func TestGetFullURL(t *testing.T) {
 			want:     want{statusCode: 404, location: ""},
 		},
 	}
+	cfg, err := config.NewConfig()
+	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter()
+			r := NewRouter(cfg)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -175,9 +181,11 @@ func TestShortByFullURL(t *testing.T) {
 			},
 		},
 	}
+	cfg, err := config.NewConfig()
+	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter()
+			r := NewRouter(cfg)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 

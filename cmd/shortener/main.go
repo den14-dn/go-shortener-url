@@ -2,14 +2,21 @@ package main
 
 import (
 	"go-shortener-url/internal/app"
+	"go-shortener-url/internal/config"
 
 	"fmt"
 	"net/http"
 )
 
 func main() {
-	r := app.NewRouter()
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	cfg, err := config.NewConfig()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	r := app.NewRouter(cfg)
+	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
 		fmt.Println(err)
 	}
 }

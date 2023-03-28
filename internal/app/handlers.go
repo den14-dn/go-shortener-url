@@ -1,6 +1,7 @@
 package app
 
 import (
+	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
 
 	"encoding/json"
@@ -14,15 +15,16 @@ import (
 )
 
 type Handler struct {
-	*chi.Mux
 	storage storage.MemStorage
+	cfg     *config.Config
 }
 
-func NewHandler(s storage.MemStorage) *Handler {
-	return &Handler{
-		Mux:     chi.NewMux(),
-		storage: s,
+func NewHandler(cfg *config.Config) *Handler {
+	h := Handler{
+		storage: storage.NewMemStorage(),
+		cfg:     cfg,
 	}
+	return &h
 }
 
 func (h *Handler) CreateShortID(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +50,7 @@ func (h *Handler) CreateShortID(w http.ResponseWriter, r *http.Request) {
 	h.storage.Add(id, strURL)
 
 	w.WriteHeader(http.StatusCreated)
-	shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
+	shortURL := fmt.Sprintf(h.cfg.BaseURL + id)
 	w.Write([]byte(shortURL))
 }
 
@@ -120,7 +122,7 @@ func (h *Handler) ShortByFullURL(w http.ResponseWriter, r *http.Request) {
 	objResp := struct {
 		Result string `json:"result"`
 	}{
-		Result: "http://localhost:8080/" + id,
+		Result: h.cfg.BaseURL + id,
 	}
 	v, err := json.Marshal(objResp)
 	if err != nil {
@@ -133,8 +135,8 @@ func (h *Handler) ShortByFullURL(w http.ResponseWriter, r *http.Request) {
 	w.Write(v)
 }
 
-func NewRouter() chi.Router {
-	h := NewHandler(storage.NewMemStorage())
+func NewRouter(cfg *config.Config) chi.Router {
+	h := NewHandler(cfg)
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{id}", h.GetFullURL)
