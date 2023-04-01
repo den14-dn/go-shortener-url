@@ -14,8 +14,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
-	r := app.NewRouter(cfg)
+	handler := app.NewHandler(cfg)
+	r := app.NewRouter(handler)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
 		fmt.Println(err)
 	}

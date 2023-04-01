@@ -5,8 +5,9 @@ import "github.com/caarlos0/env/v7"
 var cfg Config
 
 type Config struct {
-	ServerAddress string `env:"SERVER_ADDRESS,notEmpty"`
-	BaseURL       string `env:"BASE_URL,notEmpty"`
+	ServerAddress   string `env:"SERVER_ADDRESS,notEmpty"`
+	BaseURL         string `env:"BASE_URL,notEmpty"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func NewConfig() (*Config, error) {

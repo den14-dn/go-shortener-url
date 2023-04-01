@@ -43,7 +43,8 @@ func TestCreateShortID(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter(cfg)
+			h := NewHandler(cfg)
+			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -90,7 +91,8 @@ func TestGetFullURL(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter(cfg)
+			h := NewHandler(cfg)
+			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
@@ -161,7 +163,7 @@ func TestShortByFullURL(t *testing.T) {
 			},
 		},
 		{
-			name:   "negative test, empty body",
+			name:   "negative test, empty URL",
 			header: []string{"Content-Type", "application/json"},
 			body:   strings.NewReader(`{"url":""}`),
 			want: want{
@@ -185,7 +187,8 @@ func TestShortByFullURL(t *testing.T) {
 	require.NoError(t, err)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter(cfg)
+			h := NewHandler(cfg)
+			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 

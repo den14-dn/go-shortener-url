@@ -14,17 +14,26 @@ import (
 	"github.com/speps/go-hashids/v2"
 )
 
+type managerStorage interface {
+	Add(id, value string) error
+	Get(id string) (string, error)
+}
+
 type Handler struct {
-	storage storage.MemStorage
+	storage managerStorage
 	cfg     *config.Config
 }
 
 func NewHandler(cfg *config.Config) *Handler {
-	h := Handler{
-		storage: storage.NewMemStorage(),
+	var st managerStorage
+	st, err := storage.NewFileStorage(cfg.FileStoragePath)
+	if err != nil {
+		st = storage.NewMemStorage()
+	}
+	return &Handler{
+		storage: st,
 		cfg:     cfg,
 	}
-	return &h
 }
 
 func (h *Handler) CreateShortID(w http.ResponseWriter, r *http.Request) {
@@ -47,11 +56,19 @@ func (h *Handler) CreateShortID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.storage.Add(id, strURL)
+	err = h.storage.Add(id, strURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	shortURL := fmt.Sprintf(h.cfg.BaseURL + id)
-	w.Write([]byte(shortURL))
+	_, err = w.Write([]byte(shortURL))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
 func shortenURL(fullURL string) (string, error) {
@@ -74,9 +91,9 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ID param is missed", http.StatusBadRequest)
 		return
 	}
-	fullURL, ok := h.storage.Get(id)
-	if !ok {
-		http.Error(w, "URL not found", http.StatusNotFound)
+	fullURL, err := h.storage.Get(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
@@ -117,7 +134,11 @@ func (h *Handler) ShortByFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.storage.Add(id, objReq.URL)
+	err = h.storage.Add(id, objReq.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	objResp := struct {
 		Result string `json:"result"`
@@ -132,11 +153,14 @@ func (h *Handler) ShortByFullURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(v)
+	_, err = w.Write(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
-func NewRouter(cfg *config.Config) chi.Router {
-	h := NewHandler(cfg)
+func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{id}", h.GetFullURL)
