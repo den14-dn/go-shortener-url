@@ -26,3 +26,7 @@ func (m *MemStorage) Get(id string) (string, error) {
 	}
 	return value, nil
 }
+
+func (m *MemStorage) Close() error {
+	return nil
+}

@@ -2,7 +2,6 @@ package app
 
 import (
 	"go-shortener-url/internal/config"
-	"go-shortener-url/internal/storage"
 
 	"encoding/json"
 	"fmt"
@@ -24,12 +23,7 @@ type Handler struct {
 	cfg     *config.Config
 }
 
-func NewHandler(cfg *config.Config) *Handler {
-	var st managerStorage
-	st, err := storage.NewFileStorage(cfg.FileStoragePath)
-	if err != nil {
-		st = storage.NewMemStorage()
-	}
+func NewHandler(cfg *config.Config, st managerStorage) *Handler {
 	return &Handler{
 		storage: st,
 		cfg:     cfg,

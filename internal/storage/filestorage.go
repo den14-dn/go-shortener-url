@@ -2,54 +2,67 @@ package storage
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
 
 type FileStorage struct {
-	file *os.File
-	rw   *bufio.ReadWriter
+	file       *os.File
+	writer     *bufio.Writer
+	memStorage *MemStorage
 }
 
 func NewFileStorage(filePath string) (*FileStorage, error) {
-	flag := os.O_RDWR | os.O_CREATE | os.O_APPEND | os.O_SYNC
-	f, err := os.OpenFile(filePath, flag, 0777)
+	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	file, err := os.OpenFile(filePath, flag, 0777)
 	if err != nil {
 		return nil, err
 	}
+
 	return &FileStorage{
-		file: f,
-		rw:   bufio.NewReadWriter(bufio.NewReader(f), bufio.NewWriter(f)),
+		file:       file,
+		writer:     bufio.NewWriter(file),
+		memStorage: createMemStorage(filePath),
 	}, nil
 }
 
 func (f *FileStorage) Add(id, value string) error {
-	data := fmt.Sprintf("%s=%s\n", id, value)
-	if _, err := f.rw.Write([]byte(data)); err != nil {
-		return err
+	v, _ := f.memStorage.Get(id)
+	if v == "" {
+		err := f.memStorage.Add(id, value)
+		if err != nil {
+			return err
+		}
+		data := fmt.Sprintf("%s=%s\n", id, value)
+		if _, err := f.writer.Write([]byte(data)); err != nil {
+			return err
+		}
+		return f.writer.Flush()
 	}
-	return f.rw.Writer.Flush()
+	return nil
 }
 
 func (f *FileStorage) Get(id string) (string, error) {
-	for {
-		data, err := f.rw.ReadBytes('\n')
-		if err == io.EOF {
-			return "", errors.New("URL not found")
-		} else if err != nil {
-			return "", err
-		}
-
-		arr := strings.Split(string(data), "=")
-		if arr[0] == id {
-			return arr[1], nil
-		}
-	}
+	return f.memStorage.Get(id)
 }
 
 func (f *FileStorage) Close() error {
 	return f.file.Close()
+}
+
+func createMemStorage(filePath string) *MemStorage {
+	storage := NewMemStorage()
+
+	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0777)
+	if err == nil {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			data := scanner.Text()
+			arr := strings.Split(data, "=")
+			storage.Add(arr[0], arr[1])
+		}
+	}
+
+	return storage
 }

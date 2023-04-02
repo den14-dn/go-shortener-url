@@ -2,6 +2,7 @@ package app
 
 import (
 	"go-shortener-url/internal/config"
+	"go-shortener-url/internal/storage"
 
 	"io"
 	"net/http"
@@ -41,9 +42,10 @@ func TestCreateShortID(t *testing.T) {
 	}
 	cfg, err := config.NewConfig()
 	require.NoError(t, err)
+	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg)
+			h := NewHandler(cfg, st)
 			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
@@ -89,9 +91,10 @@ func TestGetFullURL(t *testing.T) {
 	}
 	cfg, err := config.NewConfig()
 	require.NoError(t, err)
+	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg)
+			h := NewHandler(cfg, st)
 			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
@@ -185,9 +188,10 @@ func TestShortByFullURL(t *testing.T) {
 	}
 	cfg, err := config.NewConfig()
 	require.NoError(t, err)
+	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg)
+			h := NewHandler(cfg, st)
 			r := NewRouter(h)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
