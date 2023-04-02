@@ -57,7 +57,7 @@ func (h *Handler) CreateShortID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	shortURL := fmt.Sprintf(h.cfg.BaseURL + id)
+	shortURL := fmt.Sprintf(h.cfg.BaseURL + "/" + id)
 	_, err = w.Write([]byte(shortURL))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -137,7 +137,7 @@ func (h *Handler) ShortByFullURL(w http.ResponseWriter, r *http.Request) {
 	objResp := struct {
 		Result string `json:"result"`
 	}{
-		Result: h.cfg.BaseURL + id,
+		Result: h.cfg.BaseURL + "/" + id,
 	}
 	v, err := json.Marshal(objResp)
 	if err != nil {

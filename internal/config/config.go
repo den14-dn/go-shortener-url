@@ -11,7 +11,7 @@ type Config struct {
 func NewConfig() (*Config, error) {
 	cfg := Config{
 		ServerAddress: "localhost:8080",
-		BaseURL:       "http://localhost:8080/",
+		BaseURL:       "http://localhost:8080",
 	}
 	if err := env.Parse(&cfg); err != nil {
 		return nil, err
