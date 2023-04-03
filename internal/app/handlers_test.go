@@ -40,8 +40,7 @@ func TestCreateShortID(t *testing.T) {
 			want: want{statusCode: 400, response: "invalid URI for request"},
 		},
 	}
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
+	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -89,8 +88,7 @@ func TestGetFullURL(t *testing.T) {
 			want:     want{statusCode: 404, location: ""},
 		},
 	}
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
+	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -186,8 +184,7 @@ func TestShortByFullURL(t *testing.T) {
 			},
 		},
 	}
-	cfg, err := config.NewConfig()
-	require.NoError(t, err)
+	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -16,14 +16,10 @@ type managerStorage interface {
 }
 
 func main() {
-	cfg, err := config.NewConfig()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	var st managerStorage
-	st, err = storage.NewFileStorage(cfg.FileStoragePath)
+
+	cfg := config.NewConfig()
+	st, err := storage.NewFileStorage(cfg.FileStoragePath)
 	if err != nil {
 		st = storage.NewMemStorage()
 	}

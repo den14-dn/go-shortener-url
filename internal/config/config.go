@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/caarlos0/env/v7"
 )
@@ -12,16 +13,16 @@ type Config struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-func NewConfig() (*Config, error) {
+func NewConfig() *Config {
 	cfg := Config{
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080",
 	}
 	setConfigWithArgs(&cfg)
 	if err := env.Parse(&cfg); err != nil {
-		return nil, err
+		fmt.Println(err)
 	}
-	return &cfg, nil
+	return &cfg
 }
 
 func setConfigWithArgs(cfg *Config) {
