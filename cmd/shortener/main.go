@@ -1,11 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"go-shortener-url/internal/app"
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
-
-	"fmt"
 	"net/http"
 )
 
