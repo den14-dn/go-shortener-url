@@ -27,14 +27,15 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Add(idUser, shortURL, origURL string) error {
-	v, _ := f.memStorage.Get(idUser, shortURL)
-	if v == "" {
-		err := f.memStorage.Add(idUser, shortURL, origURL)
+func (f *FileStorage) Add(userID, shortURL, origURL string) error {
+	_, errUser := f.memStorage.GetByUser(userID)
+	_, errURLs := f.memStorage.Get(shortURL)
+	if errUser != nil || errURLs != nil {
+		err := f.memStorage.Add(userID, shortURL, origURL)
 		if err != nil {
 			return err
 		}
-		data := fmt.Sprintf("%s=%s=%s\n", idUser, shortURL, origURL)
+		data := fmt.Sprintf("%s=%s=%s\n", userID, shortURL, origURL)
 		if _, err := f.writer.Write([]byte(data)); err != nil {
 			return err
 		}
@@ -43,12 +44,12 @@ func (f *FileStorage) Add(idUser, shortURL, origURL string) error {
 	return nil
 }
 
-func (f *FileStorage) Get(idUser, shortURL string) (string, error) {
-	return f.memStorage.Get(idUser, shortURL)
+func (f *FileStorage) Get(shortURL string) (string, error) {
+	return f.memStorage.Get(shortURL)
 }
 
-func (f *FileStorage) GetByUser(idUser string) (map[string]string, error) {
-	return f.memStorage.GetByUser(idUser)
+func (f *FileStorage) GetByUser(userID string) (map[string]string, error) {
+	return f.memStorage.GetByUser(userID)
 }
 
 func (f *FileStorage) Close() error {

@@ -1,17 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"go-shortener-url/internal/app"
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
+
+	"fmt"
 	"net/http"
 )
 
 type managerStorage interface {
-	Add(idUser, shortURL, origURL string) error
-	Get(idUser, shortURL string) (string, error)
-	GetByUser(idUser string) (map[string]string, error)
+	Add(userID, shortURL, origURL string) error
+	Get(shortURL string) (string, error)
+	GetByUser(userID string) (map[string]string, error)
 	Close() error
 }
 

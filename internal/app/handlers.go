@@ -17,15 +17,15 @@ import (
 )
 
 type managerStorage interface {
-	Add(idUser, shortURL, origURL string) error
-	Get(idUser, shortURL string) (string, error)
-	GetByUser(idUser string) (map[string]string, error)
+	Add(userID, shortURL, origURL string) error
+	Get(shortURL string) (string, error)
+	GetByUser(userID string) (map[string]string, error)
 }
 
 type Handler struct {
 	storage managerStorage
 	cfg     *config.Config
-	idUser  string
+	userID  string
 }
 
 func NewHandler(cfg *config.Config, st managerStorage) *Handler {
@@ -70,7 +70,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.storage.Add(h.idUser, shortURL, origURL)
+	err = h.storage.Add(h.userID, shortURL, origURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -105,7 +105,7 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ID param is missed", http.StatusBadRequest)
 		return
 	}
-	origURL, err := h.storage.Get(h.idUser, shortURL)
+	origURL, err := h.storage.Get(shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -148,7 +148,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.storage.Add(h.idUser, shortURL, objReq.URL)
+	err = h.storage.Add(h.userID, shortURL, objReq.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -175,7 +175,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	urls, err := h.storage.GetByUser(h.idUser)
+	urls, err := h.storage.GetByUser(h.userID)
 	if err != nil || len(urls) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -189,7 +189,7 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	rst := make(arr, 0, len(urls))
 	for k, v := range urls {
-		rst = append(rst, element{ShortURL: k, OriginalURL: v})
+		rst = append(rst, element{ShortURL: h.cfg.BaseURL + "/" + k, OriginalURL: v})
 	}
 	jsonRst, _ := json.Marshal(rst)
 
@@ -203,13 +203,13 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 		cookie, err := r.Cookie("id")
 		switch {
 		case errors.Is(err, http.ErrNoCookie) || !validateID(cookie.Value):
-			h.idUser = getUserID()
-			http.SetCookie(w, &http.Cookie{Name: "id", Value: h.idUser})
+			h.userID = getUserID()
+			http.SetCookie(w, &http.Cookie{Name: "id", Value: h.userID})
 		case err != nil:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		default:
-			h.idUser = cookie.Value
+			h.userID = cookie.Value
 		}
 		next.ServeHTTP(w, r)
 	})

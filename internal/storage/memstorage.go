@@ -5,43 +5,41 @@ import (
 )
 
 type MemStorage struct {
-	urls map[string]map[string]string
+	urls  map[string]string
+	users map[string][]string
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		urls: make(map[string]map[string]string),
+		urls:  make(map[string]string),
+		users: make(map[string][]string),
 	}
 }
 
-func (m *MemStorage) Add(idUser, shortURL, origURL string) error {
-	value, ok := m.urls[idUser]
-	if !ok {
-		value = make(map[string]string)
-	}
-	value[shortURL] = origURL
-	m.urls[idUser] = value
+func (m *MemStorage) Add(userID, shortURL, origURL string) error {
+	m.users[userID] = append(m.users[userID], shortURL)
+	m.urls[shortURL] = origURL
 	return nil
 }
 
-func (m *MemStorage) Get(idUser, shortURL string) (string, error) {
-	value, ok := m.urls[idUser]
-	if !ok {
-		return "", errors.New("URL not found")
-	}
-	origURL, ok := value[shortURL]
+func (m *MemStorage) Get(shortURL string) (string, error) {
+	origURL, ok := m.urls[shortURL]
 	if !ok {
 		return "", errors.New("URL not found")
 	}
 	return origURL, nil
 }
 
-func (m *MemStorage) GetByUser(idUser string) (map[string]string, error) {
-	value, ok := m.urls[idUser]
+func (m *MemStorage) GetByUser(userID string) (map[string]string, error) {
+	shortURLs, ok := m.users[userID]
 	if !ok {
-		return nil, errors.New("URL not found")
+		return nil, errors.New("URLs not found")
 	}
-	return value, nil
+	rst := make(map[string]string)
+	for _, v := range shortURLs {
+		rst[v] = m.urls[v]
+	}
+	return rst, nil
 }
 
 func (m *MemStorage) Close() error {
