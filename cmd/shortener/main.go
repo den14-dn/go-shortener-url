@@ -9,8 +9,9 @@ import (
 )
 
 type managerStorage interface {
-	Add(id, value string) error
-	Get(id string) (string, error)
+	Add(idUser, shortURL, origURL string) error
+	Get(idUser, shortURL string) (string, error)
+	GetByUser(idUser string) (map[string]string, error)
 	Close() error
 }
 

@@ -27,14 +27,14 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	}, nil
 }
 
-func (f *FileStorage) Add(id, value string) error {
-	v, _ := f.memStorage.Get(id)
+func (f *FileStorage) Add(idUser, shortURL, origURL string) error {
+	v, _ := f.memStorage.Get(idUser, shortURL)
 	if v == "" {
-		err := f.memStorage.Add(id, value)
+		err := f.memStorage.Add(idUser, shortURL, origURL)
 		if err != nil {
 			return err
 		}
-		data := fmt.Sprintf("%s=%s\n", id, value)
+		data := fmt.Sprintf("%s=%s=%s\n", idUser, shortURL, origURL)
 		if _, err := f.writer.Write([]byte(data)); err != nil {
 			return err
 		}
@@ -43,8 +43,12 @@ func (f *FileStorage) Add(id, value string) error {
 	return nil
 }
 
-func (f *FileStorage) Get(id string) (string, error) {
-	return f.memStorage.Get(id)
+func (f *FileStorage) Get(idUser, shortURL string) (string, error) {
+	return f.memStorage.Get(idUser, shortURL)
+}
+
+func (f *FileStorage) GetByUser(idUser string) (map[string]string, error) {
+	return f.memStorage.GetByUser(idUser)
 }
 
 func (f *FileStorage) Close() error {
@@ -60,7 +64,7 @@ func createMemStorage(filePath string) *MemStorage {
 		for scanner.Scan() {
 			data := scanner.Text()
 			arr := strings.Split(data, "=")
-			storage.Add(arr[0], arr[1])
+			storage.Add(arr[0], arr[1], arr[2])
 		}
 	}
 
