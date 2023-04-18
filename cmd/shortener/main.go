@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"go-shortener-url/internal/app"
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
@@ -17,16 +18,22 @@ type managerStorage interface {
 }
 
 func main() {
-	var st managerStorage
-
 	cfg := config.NewConfig()
-	st, err := storage.NewFileStorage(cfg.FileStoragePath)
+
+	db, err := sql.Open("postgres", cfg.AddrConnDB)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	defer db.Close()
+
+	var st managerStorage
+	st, err = storage.NewFileStorage(cfg.FileStoragePath)
 	if err != nil {
 		st = storage.NewMemStorage()
 	}
 	defer st.Close()
 
-	handler, err := app.NewHandler(cfg, st)
+	handler, err := app.NewHandler(cfg, st, db)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

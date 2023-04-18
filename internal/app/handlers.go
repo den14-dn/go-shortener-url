@@ -33,19 +33,13 @@ type Handler struct {
 	db      *sql.DB
 }
 
-func NewHandler(cfg *config.Config, st managerStorage) (*Handler, error) {
+func NewHandler(cfg *config.Config, st managerStorage, db *sql.DB) (*Handler, error) {
 	key, _ = generateRandom(sizeKey)
-
-	connStr := cfg.AddrConnDB
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 
 	return &Handler{
 		storage: st,
 		cfg:     cfg,
+		db:      db,
 	}, nil
 }
 

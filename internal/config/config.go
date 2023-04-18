@@ -18,7 +18,7 @@ func NewConfig() *Config {
 	cfg := Config{
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080",
-		AddrConnDB:    "user=postgres password=123 dbname=test",
+		AddrConnDB:    "user=postgres password=123 dbname=test sslmode=disable",
 	}
 	setConfigWithArgs(&cfg)
 	if err := env.Parse(&cfg); err != nil {
