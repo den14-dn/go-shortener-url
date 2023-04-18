@@ -1,7 +1,10 @@
 package app
 
 import (
+	"context"
+	"database/sql"
 	"go-shortener-url/internal/config"
+	"time"
 
 	"compress/gzip"
 	"encoding/json"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/lib/pq"
 	"github.com/speps/go-hashids/v2"
 )
 
@@ -26,14 +30,23 @@ type Handler struct {
 	storage managerStorage
 	cfg     *config.Config
 	userID  string
+	db      *sql.DB
 }
 
-func NewHandler(cfg *config.Config, st managerStorage) *Handler {
+func NewHandler(cfg *config.Config, st managerStorage) (*Handler, error) {
 	key, _ = generateRandom(sizeKey)
+
+	connStr := cfg.AddrConnDB
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
 	return &Handler{
 		storage: st,
 		cfg:     cfg,
-	}
+	}, nil
 }
 
 func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +211,16 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonRst)
 }
 
+func (h *Handler) CheckConnDB(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	if err := h.db.PingContext(ctx); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) userDefinition(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("id")
@@ -225,6 +248,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Post("/", h.CreateShortURL)
 		r.Post("/api/shorten", h.GetShortByFullURL)
 		r.Get("/api/user/urls", h.GetUserURLs)
+		r.Get("/ping", h.CheckConnDB)
 	})
 	return r
 }

@@ -42,7 +42,8 @@ func TestCreateShortID(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
-	h := NewHandler(cfg, st)
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
 	r := NewRouter(h)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -93,7 +94,8 @@ func TestGetFullURL(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
-	h := NewHandler(cfg, st)
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
 	r := NewRouter(h)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -195,7 +197,8 @@ func TestShortByFullURL(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
-	h := NewHandler(cfg, st)
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
 	r := NewRouter(h)
 	ts := httptest.NewServer(r)
 	defer ts.Close()

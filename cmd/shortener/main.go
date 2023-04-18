@@ -26,9 +26,14 @@ func main() {
 	}
 	defer st.Close()
 
-	handler := app.NewHandler(cfg, st)
+	handler, err := app.NewHandler(cfg, st)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	r := app.NewRouter(handler)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
-		fmt.Println(err)
+		fmt.Println(err.Error())
 	}
 }
