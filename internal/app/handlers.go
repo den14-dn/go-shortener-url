@@ -33,8 +33,13 @@ type Handler struct {
 	db      *sql.DB
 }
 
-func NewHandler(cfg *config.Config, st managerStorage, db *sql.DB) (*Handler, error) {
+func NewHandler(cfg *config.Config, st managerStorage) (*Handler, error) {
 	key, _ = generateRandom(sizeKey)
+
+	db, err := sql.Open("postgres", cfg.AddrConnDB)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Handler{
 		storage: st,
@@ -230,6 +235,10 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (h *Handler) Close() error {
+	return h.db.Close()
 }
 
 func NewRouter(h *Handler) chi.Router {
