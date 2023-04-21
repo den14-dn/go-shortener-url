@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"go-shortener-url/internal/config"
 	"time"
 
@@ -16,35 +15,27 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/lib/pq"
 	"github.com/speps/go-hashids/v2"
 )
 
 type managerStorage interface {
-	Add(userID, shortURL, origURL string) error
-	Get(shortURL string) (string, error)
-	GetByUser(userID string) (map[string]string, error)
+	Add(ctx context.Context, userID, shortURL, origURL string) error
+	Get(ctx context.Context, shortURL string) (string, error)
+	GetByUser(ctx context.Context, userID string) (map[string]string, error)
+	CheckStorage(ctx context.Context) error
 }
 
 type Handler struct {
 	storage managerStorage
 	cfg     *config.Config
 	userID  string
-	db      *sql.DB
 }
 
 func NewHandler(cfg *config.Config, st managerStorage) (*Handler, error) {
 	key, _ = generateRandom(sizeKey)
-
-	db, err := sql.Open("postgres", cfg.AddrConnDB)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Handler{
 		storage: st,
 		cfg:     cfg,
-		db:      db,
 	}, nil
 }
 
@@ -82,7 +73,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.storage.Add(h.userID, shortURL, origURL)
+	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -117,7 +108,7 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ID param is missed", http.StatusBadRequest)
 		return
 	}
-	origURL, err := h.storage.Get(shortURL)
+	origURL, err := h.storage.Get(r.Context(), shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -160,7 +151,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.storage.Add(h.userID, shortURL, objReq.URL)
+	err = h.storage.Add(r.Context(), h.userID, shortURL, objReq.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -187,7 +178,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	urls, err := h.storage.GetByUser(h.userID)
+	urls, err := h.storage.GetByUser(r.Context(), h.userID)
 	if err != nil || len(urls) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -213,7 +204,7 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CheckConnDB(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
-	if err := h.db.PingContext(ctx); err != nil {
+	if err := h.storage.CheckStorage(ctx); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -235,10 +226,6 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (h *Handler) Close() error {
-	return h.db.Close()
 }
 
 func NewRouter(h *Handler) chi.Router {

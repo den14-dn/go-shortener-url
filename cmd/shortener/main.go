@@ -1,28 +1,43 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"go-shortener-url/internal/app"
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
 
 	"fmt"
 	"net/http"
+
+	_ "github.com/lib/pq"
 )
 
 type managerStorage interface {
-	Add(userID, shortURL, origURL string) error
-	Get(shortURL string) (string, error)
-	GetByUser(userID string) (map[string]string, error)
+	Add(ctx context.Context, userID, shortURL, origURL string) error
+	Get(ctx context.Context, shortURL string) (string, error)
+	GetByUser(ctx context.Context, userID string) (map[string]string, error)
+	CheckStorage(ctx context.Context) error
 	Close() error
 }
 
 func main() {
 	cfg := config.NewConfig()
+	ctx := context.Background()
+
+	db, err := sql.Open("postgres", cfg.AddrConnDB)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
 	var st managerStorage
-	st, err := storage.NewFileStorage(cfg.FileStoragePath)
-	if err != nil {
-		st = storage.NewMemStorage()
+	st = storage.NewDBStorage(db)
+	if err := st.CheckStorage(ctx); err != nil {
+		st = storage.NewFileStorage(ctx, cfg.FileStoragePath)
+		if err := st.CheckStorage(ctx); err != nil {
+			st = storage.NewMemStorage()
+		}
 	}
 	defer st.Close()
 
@@ -31,7 +46,6 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	defer handler.Close()
 
 	r := app.NewRouter(handler)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {

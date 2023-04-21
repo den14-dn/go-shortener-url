@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 )
 
@@ -16,13 +17,13 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) Add(userID, shortURL, origURL string) error {
+func (m *MemStorage) Add(ctx context.Context, userID, shortURL, origURL string) error {
 	m.users[userID] = append(m.users[userID], shortURL)
 	m.urls[shortURL] = origURL
 	return nil
 }
 
-func (m *MemStorage) Get(shortURL string) (string, error) {
+func (m *MemStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	origURL, ok := m.urls[shortURL]
 	if !ok {
 		return "", errors.New("URL not found")
@@ -30,7 +31,7 @@ func (m *MemStorage) Get(shortURL string) (string, error) {
 	return origURL, nil
 }
 
-func (m *MemStorage) GetByUser(userID string) (map[string]string, error) {
+func (m *MemStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
 	shortURLs, ok := m.users[userID]
 	if !ok {
 		return nil, errors.New("URLs not found")
@@ -40,6 +41,10 @@ func (m *MemStorage) GetByUser(userID string) (map[string]string, error) {
 		rst[v] = m.urls[v]
 	}
 	return rst, nil
+}
+
+func (m *MemStorage) CheckStorage(ctx context.Context) error {
+	return nil
 }
 
 func (m *MemStorage) Close() error {

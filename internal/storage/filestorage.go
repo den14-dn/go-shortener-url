@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -13,25 +14,22 @@ type FileStorage struct {
 	memStorage *MemStorage
 }
 
-func NewFileStorage(filePath string) (*FileStorage, error) {
+func NewFileStorage(ctx context.Context, filePath string) *FileStorage {
 	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
-	file, err := os.OpenFile(filePath, flag, 0777)
-	if err != nil {
-		return nil, err
-	}
+	file, _ := os.OpenFile(filePath, flag, 0777)
 
 	return &FileStorage{
 		file:       file,
 		writer:     bufio.NewWriter(file),
-		memStorage: createMemStorage(filePath),
-	}, nil
+		memStorage: createMemStorage(ctx, filePath),
+	}
 }
 
-func (f *FileStorage) Add(userID, shortURL, origURL string) error {
-	_, errUser := f.memStorage.GetByUser(userID)
-	_, errURLs := f.memStorage.Get(shortURL)
+func (f *FileStorage) Add(ctx context.Context, userID, shortURL, origURL string) error {
+	_, errUser := f.memStorage.GetByUser(ctx, userID)
+	_, errURLs := f.memStorage.Get(ctx, shortURL)
 	if errUser != nil || errURLs != nil {
-		err := f.memStorage.Add(userID, shortURL, origURL)
+		err := f.memStorage.Add(ctx, userID, shortURL, origURL)
 		if err != nil {
 			return err
 		}
@@ -44,19 +42,24 @@ func (f *FileStorage) Add(userID, shortURL, origURL string) error {
 	return nil
 }
 
-func (f *FileStorage) Get(shortURL string) (string, error) {
-	return f.memStorage.Get(shortURL)
+func (f *FileStorage) Get(ctx context.Context, shortURL string) (string, error) {
+	return f.memStorage.Get(ctx, shortURL)
 }
 
-func (f *FileStorage) GetByUser(userID string) (map[string]string, error) {
-	return f.memStorage.GetByUser(userID)
+func (f *FileStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
+	return f.memStorage.GetByUser(ctx, userID)
+}
+
+func (f *FileStorage) CheckStorage(ctx context.Context) error {
+	_, err := f.file.Stat()
+	return err
 }
 
 func (f *FileStorage) Close() error {
 	return f.file.Close()
 }
 
-func createMemStorage(filePath string) *MemStorage {
+func createMemStorage(ctx context.Context, filePath string) *MemStorage {
 	storage := NewMemStorage()
 
 	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0777)
@@ -65,7 +68,7 @@ func createMemStorage(filePath string) *MemStorage {
 		for scanner.Scan() {
 			data := scanner.Text()
 			arr := strings.Split(data, "=")
-			storage.Add(arr[0], arr[1], arr[2])
+			storage.Add(ctx, arr[0], arr[1], arr[2])
 		}
 	}
 
