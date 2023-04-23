@@ -8,7 +8,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -60,42 +59,106 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	origURL := string(body)
 
-	_, err = url.ParseRequestURI(origURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	shortURL, err := shortenURL(origURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
+	shortURL, err := h.shortenAndSaveURL(r, string(body))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	rstShortURL := fmt.Sprintf(h.cfg.BaseURL + "/" + shortURL)
-	_, err = w.Write([]byte(rstShortURL))
+	_, err = w.Write([]byte(shortURL))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 }
 
-func shortenURL(origURL string) (string, error) {
-	hd := hashids.NewData()
-	hd.Salt = origURL
-	h, err := hashids.NewWithData(hd)
+func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "request must be json-format", http.StatusBadRequest)
+		return
+	}
+
+	type reqElement struct {
+		ID  string `json:"correlation_id"`
+		URL string `json:"original_url"`
+	}
+	var arrReq []reqElement
+
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := json.Unmarshal(body, &arrReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	type respElement struct {
+		ID  string `json:"correlation_id"`
+		URL string `json:"short_url"`
+	}
+	var arrResp []respElement
+
+	for _, el := range arrReq {
+		shortURL, err := h.shortenAndSaveURL(r, el.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		arrResp = append(arrResp, respElement{ID: el.ID, URL: shortURL})
+	}
+
+	v, err := json.Marshal(arrResp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, error) {
+	if origURL == "" {
+		err := errors.New("URL is empty")
+		return "", err
+	}
+	if _, err := url.ParseRequestURI(origURL); err != nil {
+		return "", err
+	}
+
+	id, err := shortenURL(origURL)
 	if err != nil {
 		return "", err
 	}
-	id, err := h.Encode([]int{45, 434, 1313, 99})
+
+	shortURL := h.cfg.BaseURL + "/" + id
+
+	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
+	if err != nil {
+		return "", err
+	}
+
+	return shortURL, nil
+}
+
+func shortenURL(origURL string) (string, error) {
+	hid := hashids.NewData()
+	hid.Salt = origURL
+	hi, err := hashids.NewWithData(hid)
+	if err != nil {
+		return "", err
+	}
+	id, err := hi.Encode([]int{45, 434, 1313, 99})
 	if err != nil {
 		return "", err
 	}
@@ -108,7 +171,7 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ID param is missed", http.StatusBadRequest)
 		return
 	}
-	origURL, err := h.storage.Get(r.Context(), shortURL)
+	origURL, err := h.storage.Get(r.Context(), h.cfg.BaseURL+"/"+shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -137,21 +200,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if objReq.URL == "" {
-		http.Error(w, "URL is empty", http.StatusBadRequest)
-		return
-	}
-	_, err = url.ParseRequestURI(objReq.URL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	shortURL, err := shortenURL(objReq.URL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = h.storage.Add(r.Context(), h.userID, shortURL, objReq.URL)
+	shortURL, err := h.shortenAndSaveURL(r, objReq.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -160,7 +209,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 	objResp := struct {
 		Result string `json:"result"`
 	}{
-		Result: h.cfg.BaseURL + "/" + shortURL,
+		Result: shortURL,
 	}
 	v, err := json.Marshal(objResp)
 	if err != nil {
@@ -192,7 +241,7 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	rst := make(arr, 0, len(urls))
 	for k, v := range urls {
-		rst = append(rst, element{ShortURL: h.cfg.BaseURL + "/" + k, OriginalURL: v})
+		rst = append(rst, element{ShortURL: k, OriginalURL: v})
 	}
 	jsonRst, _ := json.Marshal(rst)
 
@@ -239,6 +288,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Post("/api/shorten", h.GetShortByFullURL)
 		r.Get("/api/user/urls", h.GetUserURLs)
 		r.Get("/ping", h.CheckConnDB)
+		r.Post("/api/shorten/batch", h.CreateManyShortURL)
 	})
 	return r
 }

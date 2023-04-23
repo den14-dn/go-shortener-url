@@ -32,7 +32,7 @@ func TestCreateShortID(t *testing.T) {
 		{
 			name: "negative test, empty body",
 			body: nil,
-			want: want{statusCode: 400, response: "empty url"},
+			want: want{statusCode: 400, response: "URL is empty"},
 		},
 		{
 			name: "negative test, bad URL",
