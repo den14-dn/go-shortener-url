@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 )
 
 type DBStorage struct {
@@ -16,11 +17,17 @@ func NewDBStorage(db *sql.DB) *DBStorage {
 }
 
 func (d *DBStorage) Add(ctx context.Context, userID, shortURL, originURL string) error {
-	_, err := d.db.ExecContext(ctx, "INSERT INTO users(user_id, short_url) VALUES ($1, $2)", userID, shortURL)
+	res, err := d.db.ExecContext(ctx, "INSERT INTO urls(original_url, short_url) VALUES ($1, $2) ON CONFLICT (original_url) DO NOTHING", originURL, shortURL)
 	if err != nil {
 		return err
 	}
-	_, err = d.db.ExecContext(ctx, "INSERT INTO urls(original_url, short_url) VALUES ($1, $2)", originURL, shortURL)
+	row, err := res.RowsAffected()
+	if err != nil {
+		return err
+	} else if row < 1 {
+		return errors.New("not unique original_url")
+	}
+	_, err = d.db.ExecContext(ctx, "INSERT INTO users(user_id, short_url) VALUES ($1, $2)", userID, shortURL)
 	if err != nil {
 		return err
 	}
@@ -79,6 +86,10 @@ func (d *DBStorage) CheckStorage(ctx context.Context) error {
 	row = d.db.QueryRowContext(ctx, "SELECT COUNT(*) AS count FROM urls")
 	if err = row.Scan(&count); err != nil {
 		_, err = d.db.ExecContext(ctx, "CREATE TABLE urls (original_url TEXT PRIMARY KEY, short_url VARCHAR(255))")
+		if err != nil {
+			return err
+		}
+		_, err = d.db.ExecContext(ctx, "CREATE UNIQUE INDEX original_url_idx ON urls (original_url)")
 		if err != nil {
 			return err
 		}

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"go-shortener-url/internal/app"
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/storage"
 
+	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 

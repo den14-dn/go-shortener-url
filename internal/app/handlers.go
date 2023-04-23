@@ -1,16 +1,17 @@
 package app
 
 import (
-	"context"
 	"go-shortener-url/internal/config"
-	"time"
 
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -60,13 +61,17 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	httpStatus := http.StatusCreated
+
 	shortURL, err := h.shortenAndSaveURL(r, string(body))
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
+		httpStatus = http.StatusConflict
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(httpStatus)
 	_, err = w.Write([]byte(shortURL))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -108,6 +113,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 		shortURL, err := h.shortenAndSaveURL(r, el.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 		arrResp = append(arrResp, respElement{ID: el.ID, URL: shortURL})
 	}
@@ -144,7 +150,9 @@ func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, er
 	shortURL := h.cfg.BaseURL + "/" + id
 
 	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
+		return shortURL, err
+	} else if err != nil {
 		return "", err
 	}
 
@@ -200,8 +208,13 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	httpStatus := http.StatusCreated
+
 	shortURL, err := h.shortenAndSaveURL(r, objReq.URL)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
+		httpStatus = http.StatusConflict
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -218,7 +231,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(httpStatus)
 	_, err = w.Write(v)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
