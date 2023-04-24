@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"log"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -110,10 +109,13 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 	var arrResp []respElement
 
+	httpStatus := http.StatusCreated
+
 	for _, el := range arrReq {
 		shortURL, err := h.shortenAndSaveURL(r, el.URL)
-		if err != nil {
-			log.Println("got error: " + err.Error())
+		if err != nil && strings.Contains(err.Error(), "not unique original_url") {
+			httpStatus = http.StatusConflict
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -127,7 +129,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(httpStatus)
 	_, err = w.Write(v)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
