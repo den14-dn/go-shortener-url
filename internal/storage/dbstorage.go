@@ -78,7 +78,7 @@ func (d *DBStorage) CheckStorage(ctx context.Context) error {
 	var count int
 	row := d.db.QueryRowContext(ctx, "SELECT COUNT(*) AS count FROM users")
 	if err = row.Scan(&count); err != nil {
-		_, err = d.db.ExecContext(ctx, "CREATE TABLE users (user_id VARCHAR(255) PRIMARY KEY, short_url VARCHAR(255))")
+		_, err = d.db.ExecContext(ctx, "CREATE TABLE users (user_id VARCHAR(255), short_url VARCHAR(255) PRIMARY KEY)")
 		if err != nil {
 			return err
 		}

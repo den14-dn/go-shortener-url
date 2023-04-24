@@ -109,13 +109,9 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 	var arrResp []respElement
 
-	httpStatus := http.StatusCreated
-
 	for _, el := range arrReq {
 		shortURL, err := h.shortenAndSaveURL(r, el.URL)
-		if err != nil && strings.Contains(err.Error(), "not unique original_url") {
-			httpStatus = http.StatusConflict
-		} else if err != nil {
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -129,7 +125,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatus)
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(v)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
