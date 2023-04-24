@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"log"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -112,6 +113,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	for _, el := range arrReq {
 		shortURL, err := h.shortenAndSaveURL(r, el.URL)
 		if err != nil {
+			log.Println("got error: " + err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
