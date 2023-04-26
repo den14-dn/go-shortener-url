@@ -32,7 +32,7 @@ func TestCreateShortID(t *testing.T) {
 		{
 			name: "negative test, empty body",
 			body: nil,
-			want: want{statusCode: 400, response: "empty url"},
+			want: want{statusCode: 400, response: "URL is empty"},
 		},
 		{
 			name: "negative test, bad URL",
@@ -42,14 +42,18 @@ func TestCreateShortID(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
+	r := NewRouter(h)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	idUser := getUserID()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg, st)
-			r := NewRouter(h)
-			ts := httptest.NewServer(r)
-			defer ts.Close()
-
 			req, err := http.NewRequest(http.MethodPost, ts.URL, tt.body)
+			req.Header.Set("Cookie", "id="+idUser)
 			require.NoError(t, err)
 			resp, err := http.DefaultClient.Do(req)
 			require.NoError(t, err)
@@ -90,30 +94,37 @@ func TestGetFullURL(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
+	r := NewRouter(h)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	idUser := getUserID()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg, st)
-			r := NewRouter(h)
-			ts := httptest.NewServer(r)
-			defer ts.Close()
-
 			req, err := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader(tt.bodyPost))
+			req.Header.Set("Cookie", "id="+idUser)
 			require.NoError(t, err)
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			err = resp.Body.Close()
+			require.NoError(t, err)
 
 			req, err = http.NewRequest(http.MethodGet, ts.URL+tt.request, nil)
+			req.Header.Set("Cookie", "id="+idUser)
 			require.NoError(t, err)
-
-			client := &http.Client{
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
-			}
 			resp, err = client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			err = resp.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
 			assert.Equal(t, tt.want.location, resp.Header.Get("Location"))
@@ -186,14 +197,18 @@ func TestShortByFullURL(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: "localhost:8080", BaseURL: "http://localhost:8080"}
 	st := storage.NewMemStorage()
+	h, err := NewHandler(cfg, st)
+	require.NoError(t, err)
+	r := NewRouter(h)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	idUser := getUserID()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewHandler(cfg, st)
-			r := NewRouter(h)
-			ts := httptest.NewServer(r)
-			defer ts.Close()
-
 			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/shorten", tt.body)
+			req.Header.Set("Cookie", "id="+idUser)
 			req.Header.Set(tt.header[0], tt.header[1])
 			require.NoError(t, err)
 			resp, err := http.DefaultClient.Do(req)
