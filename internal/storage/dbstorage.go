@@ -39,7 +39,7 @@ func (d *DBStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	var markDelete bool
 	query := `SELECT 
     		original_url, 
-    		mark_del 
+    		COALESCE(mark_del, FALSE) AS mark_del 
 		FROM urls 
 		WHERE short_url = $1`
 	row := d.db.QueryRowContext(ctx, query, shortURL)

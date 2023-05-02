@@ -66,7 +66,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	httpStatus := http.StatusCreated
 
-	shortURL, err := h.shortenAndSaveURL(r, string(body))
+	shortURL, err := h.shortenAndSaveURL(r.Context(), string(body))
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		httpStatus = http.StatusConflict
 	} else if err != nil {
@@ -113,7 +113,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	var arrResp []respElement
 
 	for _, el := range arrReq {
-		shortURL, err := h.shortenAndSaveURL(r, el.URL)
+		shortURL, err := h.shortenAndSaveURL(r.Context(), el.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -136,7 +136,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, error) {
+func (h *Handler) shortenAndSaveURL(ctx context.Context, origURL string) (string, error) {
 	if origURL == "" {
 		err := errors.New("URL is empty")
 		return "", err
@@ -152,7 +152,7 @@ func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, er
 
 	shortURL := h.cfg.BaseURL + "/" + id
 
-	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
+	err = h.storage.Add(ctx, h.userID, shortURL, origURL)
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		return shortURL, err
 	} else if err != nil {
@@ -217,7 +217,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 
 	httpStatus := http.StatusCreated
 
-	shortURL, err := h.shortenAndSaveURL(r, objReq.URL)
+	shortURL, err := h.shortenAndSaveURL(r.Context(), objReq.URL)
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		httpStatus = http.StatusConflict
 	} else if err != nil {
