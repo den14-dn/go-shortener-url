@@ -47,6 +47,10 @@ func (m *MemStorage) CheckStorage(ctx context.Context) error {
 	return nil
 }
 
+func (m *MemStorage) Delete(ctx context.Context, shortURL string) error {
+	return nil
+}
+
 func (m *MemStorage) Close() error {
 	return nil
 }

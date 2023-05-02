@@ -36,18 +36,35 @@ func (d *DBStorage) Add(ctx context.Context, userID, shortURL, originURL string)
 
 func (d *DBStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	var originalURL string
-	row := d.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_url = $1", shortURL)
-	err := row.Scan(&originalURL)
+	var markDelete bool
+	query := `SELECT 
+    		original_url, 
+    		mark_del 
+		FROM urls 
+		WHERE short_url = $1`
+	row := d.db.QueryRowContext(ctx, query, shortURL)
+	err := row.Scan(&originalURL, &markDelete)
 	if err != nil {
 		return "", err
+	} else if markDelete {
+		return "", errors.New("URL mark for deleted")
 	}
 
 	return originalURL, nil
 }
 
 func (d *DBStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
+	query := `SELECT 
+    		t2.short_url, 
+    		t2.original_url 
+		FROM 
+		    users AS t1 
+		    	LEFT JOIN urls AS t2 
+		    	ON t1.short_url = t2.short_url 
+		WHERE 
+		    t1.user_id = $1`
 	rst := make(map[string]string)
-	rows, err := d.db.QueryContext(ctx, "SELECT t2.short_url, t2.original_url FROM users AS t1 LEFT JOIN urls AS t2 ON t1.short_url = t2.short_url WHERE t1.user_id = $1", userID)
+	rows, err := d.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +87,19 @@ func (d *DBStorage) GetByUser(ctx context.Context, userID string) (map[string]st
 	return rst, nil
 }
 
+func (d *DBStorage) Delete(ctx context.Context, shortURL string) error {
+	query := `UPDATE urls 
+		SET 
+		    mark_del = TRUE 
+		WHERE 
+		    short_url = $1`
+	_, err := d.db.ExecContext(ctx, query, shortURL)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (d *DBStorage) CheckStorage(ctx context.Context) error {
 	err := d.db.PingContext(ctx)
 	if err != nil {
@@ -78,14 +108,21 @@ func (d *DBStorage) CheckStorage(ctx context.Context) error {
 	var count int
 	row := d.db.QueryRowContext(ctx, "SELECT COUNT(*) AS count FROM users")
 	if err = row.Scan(&count); err != nil {
-		_, err = d.db.ExecContext(ctx, "CREATE TABLE users (user_id VARCHAR(255), short_url VARCHAR(255) PRIMARY KEY)")
+		query := `CREATE TABLE users (
+    		user_id VARCHAR(255), 
+    		short_url VARCHAR(255) PRIMARY KEY)`
+		_, err = d.db.ExecContext(ctx, query)
 		if err != nil {
 			return err
 		}
 	}
 	row = d.db.QueryRowContext(ctx, "SELECT COUNT(*) AS count FROM urls")
 	if err = row.Scan(&count); err != nil {
-		_, err = d.db.ExecContext(ctx, "CREATE TABLE urls (original_url TEXT PRIMARY KEY, short_url VARCHAR(255))")
+		query := `CREATE TABLE urls (
+    		original_url TEXT PRIMARY KEY, 
+    		short_url VARCHAR(255), 
+    		mark_del BOOLEAN)`
+		_, err = d.db.ExecContext(ctx, query)
 		if err != nil {
 			return err
 		}

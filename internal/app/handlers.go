@@ -1,7 +1,9 @@
 package app
 
 import (
+	"fmt"
 	"go-shortener-url/internal/config"
+	"log"
 
 	"compress/gzip"
 	"context"
@@ -22,6 +24,7 @@ type managerStorage interface {
 	Add(ctx context.Context, userID, shortURL, origURL string) error
 	Get(ctx context.Context, shortURL string) (string, error)
 	GetByUser(ctx context.Context, userID string) (map[string]string, error)
+	Delete(ctx context.Context, shortURL string) error
 	CheckStorage(ctx context.Context) error
 }
 
@@ -180,7 +183,10 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	origURL, err := h.storage.Get(r.Context(), h.cfg.BaseURL+"/"+shortURL)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "URL mark for deleted") {
+		http.Error(w, err.Error(), http.StatusGone)
+		return
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -260,7 +266,10 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonRst)
+	_, err = w.Write(jsonRst)
+	if err != nil {
+		log.Println("Err when getting URLs by user")
+	}
 }
 
 func (h *Handler) CheckConnDB(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +299,57 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "request must be json-format", http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var items []string
+	if err := json.Unmarshal(body, &items); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	urls, err := h.storage.GetByUser(r.Context(), h.userID)
+	if err != nil || len(urls) == 0 {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	count := 10
+	jobCh := make(chan string)
+	for i := 0; i < count; i++ {
+		go func() {
+			for shortURL := range jobCh {
+				ctx := context.Background()
+				err := h.storage.Delete(ctx, shortURL)
+				if err != nil {
+					log.Println("Err marking delete shortURL: ", err)
+				}
+			}
+		}()
+	}
+
+	for _, item := range items {
+		shortURL := fmt.Sprintf("%s/%s", h.cfg.BaseURL, item)
+		_, ok := urls[shortURL]
+		if !ok {
+			continue
+		}
+		jobCh <- shortURL
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
 func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Compress(5))
@@ -302,6 +362,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Get("/api/user/urls", h.GetUserURLs)
 		r.Get("/ping", h.CheckConnDB)
 		r.Post("/api/shorten/batch", h.CreateManyShortURL)
+		r.Delete("/api/user/urls", h.DeleteURLsByUser)
 	})
 	return r
 }

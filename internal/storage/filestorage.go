@@ -55,6 +55,10 @@ func (f *FileStorage) CheckStorage(ctx context.Context) error {
 	return err
 }
 
+func (f *FileStorage) Delete(ctx context.Context, shortURL string) error {
+	return nil
+}
+
 func (f *FileStorage) Close() error {
 	return f.file.Close()
 }

@@ -18,6 +18,7 @@ type managerStorage interface {
 	Get(ctx context.Context, shortURL string) (string, error)
 	GetByUser(ctx context.Context, userID string) (map[string]string, error)
 	CheckStorage(ctx context.Context) error
+	Delete(ctx context.Context, shortURL string) error
 	Close() error
 }
 
