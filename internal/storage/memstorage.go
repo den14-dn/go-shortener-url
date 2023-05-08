@@ -6,14 +6,16 @@ import (
 )
 
 type MemStorage struct {
-	urls  map[string]string
-	users map[string][]string
+	urls    map[string]string
+	users   map[string][]string
+	deleted map[string]bool
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		urls:  make(map[string]string),
-		users: make(map[string][]string),
+		urls:    make(map[string]string),
+		users:   make(map[string][]string),
+		deleted: make(map[string]bool),
 	}
 }
 
@@ -27,6 +29,10 @@ func (m *MemStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	origURL, ok := m.urls[shortURL]
 	if !ok {
 		return "", errors.New("URL not found")
+	}
+	_, ok = m.deleted[shortURL]
+	if ok {
+		return "", errors.New("URL mark for deleted")
 	}
 	return origURL, nil
 }
@@ -48,6 +54,7 @@ func (m *MemStorage) CheckStorage(ctx context.Context) error {
 }
 
 func (m *MemStorage) Delete(ctx context.Context, shortURL string) error {
+	m.deleted[shortURL] = true
 	return nil
 }
 

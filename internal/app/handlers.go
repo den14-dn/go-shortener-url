@@ -1,15 +1,15 @@
 package app
 
 import (
-	"fmt"
 	"go-shortener-url/internal/config"
-	"log"
 
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -300,6 +300,9 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 }
 
 func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
+	type keyUserID string
+	const countWorkers = 5
+
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "request must be json-format", http.StatusBadRequest)
 		return
@@ -324,12 +327,12 @@ func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count := 10
+	k := keyUserID("userID")
 	jobCh := make(chan string)
-	for i := 0; i < count; i++ {
+	for i := 0; i < countWorkers; i++ {
 		go func() {
 			for shortURL := range jobCh {
-				ctx := context.Background()
+				ctx := context.WithValue(context.Background(), k, h.userID)
 				err := h.storage.Delete(ctx, shortURL)
 				if err != nil {
 					log.Println("Err marking delete shortURL: ", err)

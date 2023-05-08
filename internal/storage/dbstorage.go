@@ -49,7 +49,6 @@ func (d *DBStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	} else if markDelete {
 		return "", errors.New("URL mark for deleted")
 	}
-
 	return originalURL, nil
 }
 
