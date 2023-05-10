@@ -1,13 +1,12 @@
 package app
 
 import (
-	"go-shortener-url/internal/config"
-
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-shortener-url/internal/config"
 	"io"
 	"log"
 	"net/http"
@@ -300,9 +299,6 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 }
 
 func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
-	type keyUserID string
-	const countWorkers = 5
-
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "request must be json-format", http.StatusBadRequest)
 		return
@@ -321,14 +317,22 @@ func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urls, err := h.storage.GetByUser(r.Context(), h.userID)
-	if err != nil || len(urls) == 0 {
-		w.WriteHeader(http.StatusAccepted)
-		return
+	go h.workerDeleting(items)
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (h *Handler) workerDeleting(items []string) {
+	type keyUserID string
+	const countWorkers = 5
+
+	size := len(items) / countWorkers
+	if len(items)%countWorkers > 0 {
+		size++
 	}
+	jobCh := make(chan string, size)
 
 	k := keyUserID("userID")
-	jobCh := make(chan string)
 	for i := 0; i < countWorkers; i++ {
 		go func() {
 			for shortURL := range jobCh {
@@ -341,16 +345,18 @@ func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
+	urls, err := h.storage.GetByUser(context.Background(), h.userID)
+	if err != nil || len(urls) == 0 {
+		return
+	}
+
 	for _, item := range items {
 		shortURL := fmt.Sprintf("%s/%s", h.cfg.BaseURL, item)
 		_, ok := urls[shortURL]
-		if !ok {
-			continue
+		if ok {
+			jobCh <- shortURL
 		}
-		jobCh <- shortURL
 	}
-
-	w.WriteHeader(http.StatusAccepted)
 }
 
 func NewRouter(h *Handler) chi.Router {
