@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	_ "github.com/lib/pq"
 )
@@ -29,18 +30,20 @@ func NewPostgresql(ctx context.Context, addrConnDB string) (*Postgresql, error) 
 }
 
 func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string) error {
+	const op = "internal.storage.postgresql.Add"
+
 	query := `INSERT INTO 
     			urls(original_url, short_url) 
 			VALUES ($1, $2) 
 			ON CONFLICT (original_url) DO NOTHING`
 	res, err := d.db.ExecContext(ctx, query, originURL, shortURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("err by insert into urls: %w", err)
 	}
 
 	row, err := res.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("err by rows affected: %w", err)
 	}
 
 	if row < 1 {
@@ -52,7 +55,7 @@ func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string
 			VALUES ($1, $2)`
 	_, err = d.db.ExecContext(ctx, query, userID, shortURL)
 	if err != nil {
-		return err
+		return fmt.Errorf("err by insert into users: %w", err)
 	}
 
 	return nil
@@ -166,7 +169,7 @@ func createTables(ctx context.Context, db *sql.DB) error {
     		original_url TEXT PRIMARY KEY, 
     		short_url VARCHAR(255), 
     		mark_del BOOLEAN);
-		CREATE INDEX IF NOT EXISTS idx_original_url ON urls(original_url)`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_original_url ON urls(original_url)`
 
 	_, err = db.ExecContext(ctx, query)
 	if err != nil {

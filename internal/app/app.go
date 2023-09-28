@@ -8,30 +8,18 @@ import (
 	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"golang.org/x/exp/slog"
 )
 
-func Start() {
+func Start(ctx context.Context) {
 
 	cfg, err := config.NewConfig()
 	if err != nil {
 		slog.Error(err.Error())
 		return
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	osSignCh := make(chan os.Signal, 1)
-	signal.Notify(osSignCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-	go func() {
-		<-osSignCh
-		cancel()
-	}()
 
 	db := storage.New(ctx, cfg.AddrConnDB, cfg.FileStoragePath)
 	defer db.Close()
@@ -47,11 +35,6 @@ func Start() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
 		}
-	}()
-
-	go func() {
-		<-osSignCh
-		cancel()
 	}()
 
 	<-ctx.Done()

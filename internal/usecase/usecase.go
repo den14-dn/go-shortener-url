@@ -11,6 +11,7 @@ import (
 	"go-shortener-url/internal/storage"
 
 	"github.com/speps/go-hashids/v2"
+	"golang.org/x/exp/slog"
 )
 
 type Manager struct {
@@ -26,16 +27,20 @@ func New(store storage.Storage, baseURL string) *Manager {
 }
 
 func (m *Manager) CreateShortURL(ctxReq context.Context, originalURL, userID string) (string, error) {
+	const op = "internal.usecase.CreateShortURL"
+
 	if originalURL == "" {
 		return "", ErrNotFoundURL
 	}
 
 	if _, err := url.ParseRequestURI(originalURL); err != nil {
+		slog.Error(fmt.Sprintf("%s.ParseRequestURI: %v\n", op, err))
 		return "", err
 	}
 
 	id, err := shortenURL(originalURL)
 	if err != nil {
+		slog.Error(fmt.Sprintf("%s.shortenURL: %v\n", op, err))
 		return "", err
 	}
 
@@ -47,9 +52,10 @@ func (m *Manager) CreateShortURL(ctxReq context.Context, originalURL, userID str
 	err = m.store.Add(ctx, userID, shortURL, originalURL)
 	if err != nil {
 		if errors.Is(err, storage.ErrUniqueValue) {
-			return "", ErrUniqueValue
+			return shortURL, ErrUniqueValue
 		}
 
+		slog.Error(fmt.Sprintf("%s: %v\n", op, err))
 		return "", err
 	}
 

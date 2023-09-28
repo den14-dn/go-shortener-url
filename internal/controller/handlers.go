@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -38,7 +37,6 @@ func unzipBody(r *http.Request) (body []byte, err error) {
 
 func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("--- CreateShortURL")
 		body, err := unzipBody(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,10 +49,15 @@ func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
+		writeResponse := func(url string, statusCode int) {
+			w.WriteHeader(statusCode)
+			w.Write([]byte(url))
+		}
+
 		shortURL, err := m.CreateShortURL(r.Context(), string(body), c.Value)
 		if err != nil {
 			if errors.Is(err, usecase.ErrUniqueValue) {
-				http.Error(w, err.Error(), http.StatusConflict)
+				writeResponse(shortURL, http.StatusConflict)
 				return
 			}
 
@@ -62,8 +65,7 @@ func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(shortURL))
+		writeResponse(shortURL, http.StatusCreated)
 	}
 }
 
@@ -83,7 +85,6 @@ func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
 			req  []request
 			resp []response
 		)
-		fmt.Println("--- CreateManyShortURL")
 
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "request must be json-format", http.StatusBadRequest)
@@ -131,7 +132,6 @@ func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
 
 func GetFullURL(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("--- GetFullURL")
 		shortURL := chi.URLParam(r, "id")
 		if shortURL == "" {
 			http.Error(w, "ID param is missed", http.StatusBadRequest)
@@ -167,7 +167,6 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 			req  request
 			resp response
 		)
-		fmt.Println("--- GetShortByFullURL")
 
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "request must be json-format", http.StatusBadRequest)
@@ -191,10 +190,24 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
+		writeResponse := func(url string, statusCode int) {
+			resp = response{Result: url}
+
+			data, err := json.Marshal(resp)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(statusCode)
+			w.Write(data)
+		}
+
 		shortURL, err := m.CreateShortURL(r.Context(), req.URL, c.Value)
 		if err != nil {
 			if errors.Is(err, usecase.ErrUniqueValue) {
-				http.Error(w, err.Error(), http.StatusConflict)
+				writeResponse(shortURL, http.StatusConflict)
 				return
 			}
 
@@ -202,17 +215,7 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
-		resp = response{Result: shortURL}
-
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write(data)
+		writeResponse(shortURL, http.StatusCreated)
 	}
 }
 
@@ -224,7 +227,6 @@ func GetUserURLs(m *usecase.Manager) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var resp []response
-		fmt.Println("--- GetUserURLs")
 
 		c, err := r.Cookie("id")
 		if err != nil {
@@ -256,7 +258,6 @@ func GetUserURLs(m *usecase.Manager) http.HandlerFunc {
 
 func CheckConnDB(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("--- CheckConnDB")
 		if err := m.CheckStorage(r.Context()); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -269,7 +270,6 @@ func CheckConnDB(m *usecase.Manager) http.HandlerFunc {
 func DeleteURLsByUser(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req []string
-		fmt.Println("--- DeleteURLsByUser")
 
 		if r.Header.Get("Content-Type") != "application/json" {
 			http.Error(w, "request must be json-format", http.StatusBadRequest)
