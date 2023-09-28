@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/caarlos0/env/v7"
 )
@@ -14,16 +13,19 @@ type Config struct {
 	AddrConnDB      string `env:"DATABASE_DSN"`
 }
 
-func NewConfig() *Config {
+func NewConfig() (*Config, error) {
 	cfg := Config{
 		ServerAddress: "localhost:8080",
 		BaseURL:       "http://localhost:8080",
 	}
+
 	setConfigWithArgs(&cfg)
+
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
-	return &cfg
+
+	return &cfg, nil
 }
 
 func setConfigWithArgs(cfg *Config) {

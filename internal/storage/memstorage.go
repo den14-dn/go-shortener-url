@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 )
 
 type MemStorage struct {
@@ -26,26 +25,30 @@ func (m *MemStorage) Add(ctx context.Context, userID, shortURL, origURL string) 
 }
 
 func (m *MemStorage) Get(ctx context.Context, shortURL string) (string, error) {
-	origURL, ok := m.urls[shortURL]
+	originalURL, ok := m.urls[shortURL]
 	if !ok {
-		return "", errors.New("URL not found")
+		return "", ErrNotFoundURL
 	}
-	_, ok = m.deleted[shortURL]
-	if ok {
-		return "", errors.New("URL mark for deleted")
+
+	if _, ok := m.deleted[shortURL]; ok {
+		return "", ErrDeletedURL
 	}
-	return origURL, nil
+
+	return originalURL, nil
 }
 
 func (m *MemStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
+	rst := make(map[string]string)
+
 	shortURLs, ok := m.users[userID]
 	if !ok {
-		return nil, errors.New("URLs not found")
+		return nil, ErrNotFoundURL
 	}
-	rst := make(map[string]string)
+
 	for _, v := range shortURLs {
 		rst[v] = m.urls[v]
 	}
+
 	return rst, nil
 }
 

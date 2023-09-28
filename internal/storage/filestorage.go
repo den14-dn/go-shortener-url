@@ -34,12 +34,15 @@ func (f *FileStorage) Add(ctx context.Context, userID, shortURL, origURL string)
 		if err != nil {
 			return err
 		}
+
 		data := fmt.Sprintf("%s=%s=%s\n", userID, shortURL, origURL)
 		if _, err := f.writer.Write([]byte(data)); err != nil {
 			return err
 		}
+
 		return f.writer.Flush()
 	}
+
 	return nil
 }
 
@@ -61,15 +64,19 @@ func (f *FileStorage) Delete(ctx context.Context, shortURL string) error {
 	if err != nil {
 		return err
 	}
+
 	f.memStorage.Delete(ctx, shortURL)
+
 	userID, ok := ctx.Value("userID").(string)
 	if !ok {
 		return errors.New("UserID not found")
 	}
+
 	data := fmt.Sprintf("%s=%s=%s=%s\n", userID, shortURL, origURL, "true")
 	if _, err := f.writer.Write([]byte(data)); err != nil {
 		return err
 	}
+
 	return f.writer.Flush()
 }
 
@@ -88,7 +95,7 @@ func createMemStorage(ctx context.Context, filePath string) *MemStorage {
 			arr := strings.Split(data, "=")
 			storage.Add(ctx, arr[0], arr[1], arr[2])
 			if len(arr) > 3 && arr[3] == "true" {
-				storage.deleted[arr[3]] = true
+				storage.Delete(ctx, arr[1])
 			}
 		}
 	}
