@@ -38,12 +38,12 @@ func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string
 			ON CONFLICT (original_url) DO NOTHING`
 	res, err := d.db.ExecContext(ctx, query, originURL, shortURL)
 	if err != nil {
-		return fmt.Errorf("err by insert into urls: %w", err)
+		return fmt.Errorf("%s.InsertIntoURLs: %w", op, err)
 	}
 
 	row, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("err by rows affected: %w", err)
+		return fmt.Errorf("%s.RowsAffected: %w", op, err)
 	}
 
 	if row < 1 {
@@ -55,7 +55,7 @@ func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string
 			VALUES ($1, $2)`
 	_, err = d.db.ExecContext(ctx, query, userID, shortURL)
 	if err != nil {
-		return fmt.Errorf("err by insert into users: %w", err)
+		return fmt.Errorf("%s.InsertIntoUsers: %w", op, err)
 	}
 
 	return nil

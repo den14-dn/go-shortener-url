@@ -54,7 +54,7 @@ func (f *FileStorage) GetByUser(ctx context.Context, userID string) (map[string]
 	return f.memStorage.GetByUser(ctx, userID)
 }
 
-func (f *FileStorage) CheckStorage(ctx context.Context) error {
+func (f *FileStorage) CheckStorage(_ context.Context) error {
 	_, err := f.file.Stat()
 	return err
 }
