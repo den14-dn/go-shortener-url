@@ -37,6 +37,14 @@ func Start(ctx context.Context) {
 		}
 	}()
 
+	if cfg.ProfilerAddress != "" {
+		go func() {
+			if err := http.ListenAndServe(cfg.ProfilerAddress, nil); err != nil {
+				slog.Error(err.Error())
+			}
+		}()
+	}
+
 	<-ctx.Done()
 
 	slog.Info("stopped HTTP server go-shortener-url")

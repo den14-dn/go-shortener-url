@@ -11,6 +11,7 @@ type Config struct {
 	BaseURL         string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	AddrConnDB      string `env:"DATABASE_DSN"`
+	ProfilerAddress string `env:"PROFILER_ADDRESS"`
 }
 
 func NewConfig() (*Config, error) {

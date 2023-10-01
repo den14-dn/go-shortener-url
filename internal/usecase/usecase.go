@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
+	"sync"
 	"time"
 
 	"go-shortener-url/internal/storage"
@@ -102,23 +102,34 @@ func (m *Manager) CheckStorage(ctxReq context.Context) error {
 func (m *Manager) ExecDeleting(items []string, userID string) {
 	type keyUserID string
 
-	const countWorkers = 5
+	var (
+		countJob = 5
+		size     int
+	)
 
-	size := len(items) / countWorkers
-	if len(items)%countWorkers > 0 {
+	if len(items) < countJob {
+		countJob = len(items)
+	}
+
+	size = len(items) / countJob
+	if len(items)%countJob > 0 {
 		size++
 	}
 
-	jobCh := make(chan string, size)
+	jobCh := make(chan string, 1)
+	wg := &sync.WaitGroup{}
 
 	k := keyUserID("userID")
-	for i := 0; i < countWorkers; i++ {
+	for i := 0; i < countJob; i++ {
+		wg.Add(1)
+
 		go func() {
+			defer wg.Done()
 			for shortURL := range jobCh {
 				ctx := context.WithValue(context.Background(), k, userID)
 				err := m.store.Delete(ctx, shortURL)
 				if err != nil {
-					log.Println("Err marking delete shortURL: ", err)
+					slog.Error("err marking delete shortURL", err)
 				}
 			}
 		}()
@@ -126,6 +137,7 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 
 	urls, err := m.store.GetByUser(context.Background(), userID)
 	if err != nil || len(urls) == 0 {
+		close(jobCh)
 		return
 	}
 
@@ -136,6 +148,9 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 			jobCh <- shortURL
 		}
 	}
+
+	close(jobCh)
+	wg.Wait()
 }
 
 func shortenURL(origURL string) (string, error) {
