@@ -1,13 +1,14 @@
 package app
 
 import (
-	"go-shortener-url/internal/config"
-
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"go-shortener-url/internal/config"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,6 +23,7 @@ type managerStorage interface {
 	Add(ctx context.Context, userID, shortURL, origURL string) error
 	Get(ctx context.Context, shortURL string) (string, error)
 	GetByUser(ctx context.Context, userID string) (map[string]string, error)
+	Delete(ctx context.Context, shortURL string) error
 	CheckStorage(ctx context.Context) error
 }
 
@@ -63,7 +65,7 @@ func (h *Handler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	httpStatus := http.StatusCreated
 
-	shortURL, err := h.shortenAndSaveURL(r, string(body))
+	shortURL, err := h.shortenAndSaveURL(r.Context(), string(body))
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		httpStatus = http.StatusConflict
 	} else if err != nil {
@@ -110,7 +112,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	var arrResp []respElement
 
 	for _, el := range arrReq {
-		shortURL, err := h.shortenAndSaveURL(r, el.URL)
+		shortURL, err := h.shortenAndSaveURL(r.Context(), el.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -133,7 +135,7 @@ func (h *Handler) CreateManyShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, error) {
+func (h *Handler) shortenAndSaveURL(ctx context.Context, origURL string) (string, error) {
 	if origURL == "" {
 		err := errors.New("URL is empty")
 		return "", err
@@ -149,7 +151,7 @@ func (h *Handler) shortenAndSaveURL(r *http.Request, origURL string) (string, er
 
 	shortURL := h.cfg.BaseURL + "/" + id
 
-	err = h.storage.Add(r.Context(), h.userID, shortURL, origURL)
+	err = h.storage.Add(ctx, h.userID, shortURL, origURL)
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		return shortURL, err
 	} else if err != nil {
@@ -180,7 +182,10 @@ func (h *Handler) GetFullURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	origURL, err := h.storage.Get(r.Context(), h.cfg.BaseURL+"/"+shortURL)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "URL mark for deleted") {
+		http.Error(w, err.Error(), http.StatusGone)
+		return
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -211,7 +216,7 @@ func (h *Handler) GetShortByFullURL(w http.ResponseWriter, r *http.Request) {
 
 	httpStatus := http.StatusCreated
 
-	shortURL, err := h.shortenAndSaveURL(r, objReq.URL)
+	shortURL, err := h.shortenAndSaveURL(r.Context(), objReq.URL)
 	if err != nil && strings.Contains(err.Error(), "not unique original_url") {
 		httpStatus = http.StatusConflict
 	} else if err != nil {
@@ -260,7 +265,10 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonRst)
+	_, err = w.Write(jsonRst)
+	if err != nil {
+		log.Println("Err when getting URLs by user")
+	}
 }
 
 func (h *Handler) CheckConnDB(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +298,67 @@ func (h *Handler) userDefinition(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Handler) DeleteURLsByUser(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "request must be json-format", http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var items []string
+	if err := json.Unmarshal(body, &items); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	go h.workerDeleting(items)
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (h *Handler) workerDeleting(items []string) {
+	type keyUserID string
+	const countWorkers = 5
+
+	size := len(items) / countWorkers
+	if len(items)%countWorkers > 0 {
+		size++
+	}
+	jobCh := make(chan string, size)
+
+	k := keyUserID("userID")
+	for i := 0; i < countWorkers; i++ {
+		go func() {
+			for shortURL := range jobCh {
+				ctx := context.WithValue(context.Background(), k, h.userID)
+				err := h.storage.Delete(ctx, shortURL)
+				if err != nil {
+					log.Println("Err marking delete shortURL: ", err)
+				}
+			}
+		}()
+	}
+
+	urls, err := h.storage.GetByUser(context.Background(), h.userID)
+	if err != nil || len(urls) == 0 {
+		return
+	}
+
+	for _, item := range items {
+		shortURL := fmt.Sprintf("%s/%s", h.cfg.BaseURL, item)
+		_, ok := urls[shortURL]
+		if ok {
+			jobCh <- shortURL
+		}
+	}
+}
+
 func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Compress(5))
@@ -302,6 +371,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Get("/api/user/urls", h.GetUserURLs)
 		r.Get("/ping", h.CheckConnDB)
 		r.Post("/api/shorten/batch", h.CreateManyShortURL)
+		r.Delete("/api/user/urls", h.DeleteURLsByUser)
 	})
 	return r
 }
