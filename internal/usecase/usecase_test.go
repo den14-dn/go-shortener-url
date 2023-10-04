@@ -113,7 +113,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 	}
 }
 
-func ExampleExecDeleting() {
+func ExampleManager_ExecDeleting() {
 	userID := "Aa135798642"
 	items := []string{"star.example.ru/questions/20467179"}
 	fullURL := items[0]
