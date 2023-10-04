@@ -13,6 +13,7 @@ type Postgresql struct {
 	db *sql.DB
 }
 
+// NewPostgresql is the constructor for the Postgresql structure.
 func NewPostgresql(ctx context.Context, addrConnDB string) (*Postgresql, error) {
 	db, err := sql.Open("postgres", addrConnDB)
 	if err != nil {
@@ -30,6 +31,7 @@ func NewPostgresql(ctx context.Context, addrConnDB string) (*Postgresql, error) 
 	return &Postgresql{db: db}, nil
 }
 
+// Add records the user's id, the original URL, and its shortened URL.
 func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string) error {
 	const op = "internal.storage.postgresql.Add"
 
@@ -62,6 +64,7 @@ func (d *Postgresql) Add(ctx context.Context, userID, shortURL, originURL string
 	return nil
 }
 
+// Get retrieves the original URL from the database by its shortened value.
 func (d *Postgresql) Get(ctx context.Context, shortURL string) (string, error) {
 	var (
 		originalURL string
@@ -85,6 +88,7 @@ func (d *Postgresql) Get(ctx context.Context, shortURL string) (string, error) {
 	}
 }
 
+// GetByUser receives a map of shortened and original URLs by user from the database.
 func (d *Postgresql) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
 	rst := make(map[string]string)
 
@@ -126,6 +130,7 @@ func (d *Postgresql) GetByUser(ctx context.Context, userID string) (map[string]s
 	return rst, nil
 }
 
+// Delete marks the shortened URL in the database as deleted.
 func (d *Postgresql) Delete(ctx context.Context, shortURL string) error {
 	query := `UPDATE urls 
 		SET mark_del = TRUE 
@@ -139,6 +144,7 @@ func (d *Postgresql) Delete(ctx context.Context, shortURL string) error {
 	return nil
 }
 
+// CheckStorage checks the connection to the database.
 func (d *Postgresql) CheckStorage(ctx context.Context) error {
 	err := d.db.PingContext(ctx)
 	if err != nil {
@@ -148,6 +154,7 @@ func (d *Postgresql) CheckStorage(ctx context.Context) error {
 	return nil
 }
 
+// Close closes the connection to the database.
 func (d *Postgresql) Close() error {
 	return d.db.Close()
 }

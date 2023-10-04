@@ -21,6 +21,7 @@ type Manager struct {
 	baseURL string
 }
 
+// New is the constructor for the Manager structure.
 func New(store storage.Storage, baseURL string) *Manager {
 	return &Manager{
 		store:   store,

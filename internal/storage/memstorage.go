@@ -11,6 +11,7 @@ type MemStorage struct {
 	deleted map[string]bool
 }
 
+// NewMemStorage is the constructor for the MemStorage structure.
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		urls:    make(map[string]string),
@@ -19,6 +20,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+// Add adds the user id, the original and its shortened URL to the data store.
 func (m *MemStorage) Add(_ context.Context, userID, shortURL, origURL string) error {
 	if m.urls[shortURL] == origURL {
 		return ErrUniqueValue
@@ -29,6 +31,7 @@ func (m *MemStorage) Add(_ context.Context, userID, shortURL, origURL string) er
 	return nil
 }
 
+// Get retrieves the original URL from the data store by its shortened value.
 func (m *MemStorage) Get(_ context.Context, shortURL string) (string, error) {
 	originalURL, ok := m.urls[shortURL]
 	if !ok {
@@ -42,6 +45,7 @@ func (m *MemStorage) Get(_ context.Context, shortURL string) (string, error) {
 	return originalURL, nil
 }
 
+// GetByUser gets a map of all original and shortened URLs by user id.
 func (m *MemStorage) GetByUser(_ context.Context, userID string) (map[string]string, error) {
 	rst := make(map[string]string)
 
@@ -57,15 +61,18 @@ func (m *MemStorage) GetByUser(_ context.Context, userID string) (map[string]str
 	return rst, nil
 }
 
+// CheckStorage is implemented in this structure for compatibility with other data stores.
 func (m *MemStorage) CheckStorage(_ context.Context) error {
 	return nil
 }
 
+// Delete marks the shortened URL as deleted.
 func (m *MemStorage) Delete(_ context.Context, shortURL string) error {
 	m.deleted[shortURL] = true
 	return nil
 }
 
+// Close is implemented in this structure for compatibility with other data stores.
 func (m *MemStorage) Close() error {
 	return nil
 }

@@ -16,6 +16,7 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+// Write overrides the method from the http.ResponseWriter interface.
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }

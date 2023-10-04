@@ -2,6 +2,7 @@ package shortener
 
 import "github.com/speps/go-hashids/v2"
 
+// ShortenURL uses a third party library github.com/speps/go-hashids/v2' to shorten URLs.
 func ShortenURL(origURL string) (string, error) {
 	hid := hashids.NewData()
 	hid.Salt = origURL

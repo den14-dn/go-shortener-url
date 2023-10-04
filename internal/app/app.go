@@ -15,6 +15,7 @@ import (
 	"go-shortener-url/internal/usecase"
 )
 
+// Start is the entry point of the application.
 func Start(ctx context.Context) {
 
 	cfg, err := config.NewConfig()

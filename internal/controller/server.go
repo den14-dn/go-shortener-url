@@ -16,6 +16,7 @@ type Server struct {
 	storage storage.Storage
 }
 
+// New is the constructor for the Server structure.
 func New(m *usecase.Manager) *http.Server {
 	router := configureRouter(m)
 
