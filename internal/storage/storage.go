@@ -14,7 +14,6 @@ type Storage interface {
 }
 
 func New(ctx context.Context, addrConnDB, pathFileStorage string) Storage {
-
 	var store Storage
 
 	store, err := NewPostgresql(ctx, addrConnDB)

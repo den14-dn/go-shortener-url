@@ -3,14 +3,15 @@ package app
 import (
 	"context"
 	"errors"
-	"go-shortener-url/internal/config"
-	"go-shortener-url/internal/controller"
-	"go-shortener-url/internal/storage"
-	"go-shortener-url/internal/usecase"
 	"net/http"
 	"time"
 
 	"golang.org/x/exp/slog"
+
+	"go-shortener-url/internal/config"
+	"go-shortener-url/internal/controller"
+	"go-shortener-url/internal/storage"
+	"go-shortener-url/internal/usecase"
 )
 
 func Start(ctx context.Context) {

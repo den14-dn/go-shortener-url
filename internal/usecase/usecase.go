@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"go-shortener-url/internal/storage"
-
 	"github.com/speps/go-hashids/v2"
 	"golang.org/x/exp/slog"
+
+	"go-shortener-url/internal/storage"
 )
 
 type Manager struct {

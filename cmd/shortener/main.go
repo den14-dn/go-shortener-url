@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
-	"go-shortener-url/internal/app"
+
 	"os/signal"
 	"syscall"
+
+	"go-shortener-url/internal/app"
 )
 
 func main() {
