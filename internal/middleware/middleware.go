@@ -1,3 +1,4 @@
+// Package middleware is designed to work with compressed input data and user identification.
 package middleware
 
 import (
@@ -19,6 +20,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+// GzipHandle wraps the API method response to compress it.
 func GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -38,6 +40,9 @@ func GzipHandle(next http.Handler) http.Handler {
 	})
 }
 
+// Identification checks for the presence of a user ID and validates it.
+// If unsuccessful, a new identifier is created.
+// This identifier is passed to the business logic layer.
 func Identification(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("id")

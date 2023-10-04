@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Postgresql contains a connection to the database and the necessary methods for working with data.
 type Postgresql struct {
 	db *sql.DB
 }

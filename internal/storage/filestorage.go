@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// FileStorage manages the storage of data in a file on disk.
 type FileStorage struct {
 	file       *os.File
 	writer     *bufio.Writer

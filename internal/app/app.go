@@ -1,3 +1,4 @@
+// Package app is designed to control the start and stop of the entire application.
 package app
 
 import (

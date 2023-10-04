@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// MemStorage has collections for storing data in memory and data management facilities.
 type MemStorage struct {
 	urls    map[string]string
 	users   map[string][]string
