@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 )
 
 type MemStorage struct {
@@ -19,41 +18,49 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) Add(ctx context.Context, userID, shortURL, origURL string) error {
+func (m *MemStorage) Add(_ context.Context, userID, shortURL, origURL string) error {
+	if m.urls[shortURL] == origURL {
+		return ErrUniqueValue
+	}
+
 	m.users[userID] = append(m.users[userID], shortURL)
 	m.urls[shortURL] = origURL
 	return nil
 }
 
-func (m *MemStorage) Get(ctx context.Context, shortURL string) (string, error) {
-	origURL, ok := m.urls[shortURL]
+func (m *MemStorage) Get(_ context.Context, shortURL string) (string, error) {
+	originalURL, ok := m.urls[shortURL]
 	if !ok {
-		return "", errors.New("URL not found")
+		return "", ErrNotFoundURL
 	}
-	_, ok = m.deleted[shortURL]
-	if ok {
-		return "", errors.New("URL mark for deleted")
+
+	if _, ok := m.deleted[shortURL]; ok {
+		return "", ErrDeletedURL
 	}
-	return origURL, nil
+
+	return originalURL, nil
 }
 
-func (m *MemStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
+func (m *MemStorage) GetByUser(_ context.Context, userID string) (map[string]string, error) {
+	rst := make(map[string]string)
+
 	shortURLs, ok := m.users[userID]
 	if !ok {
-		return nil, errors.New("URLs not found")
+		return nil, ErrNotFoundURL
 	}
-	rst := make(map[string]string)
+
 	for _, v := range shortURLs {
 		rst[v] = m.urls[v]
 	}
+
 	return rst, nil
 }
 
-func (m *MemStorage) CheckStorage(ctx context.Context) error {
+func (m *MemStorage) CheckStorage(_ context.Context) error {
 	return nil
 }
 
-func (m *MemStorage) Delete(ctx context.Context, shortURL string) error {
+func (m *MemStorage) Delete(_ context.Context, shortURL string) error {
 	m.deleted[shortURL] = true
 	return nil
 }

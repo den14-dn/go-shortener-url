@@ -1,4 +1,4 @@
-package app
+package sign
 
 import (
 	"crypto/hmac"
@@ -11,7 +11,22 @@ const sizeKey = 16
 
 var key []byte
 
-func getUserID() string {
+func signData(data []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(data)
+	return h.Sum(nil)
+}
+
+func ValidateID(value string) bool {
+	data, err := hex.DecodeString(value)
+	if err != nil {
+		return false
+	}
+	sign := signData(data[:16])
+	return hmac.Equal(sign, data[16:])
+}
+
+func UserID() string {
 	id, _ := generateRandom(sizeKey)
 	return hex.EncodeToString(append(id, signData(id)...))
 }
@@ -23,19 +38,4 @@ func generateRandom(size int) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
-}
-
-func signData(data []byte) []byte {
-	h := hmac.New(sha256.New, key)
-	h.Write(data)
-	return h.Sum(nil)
-}
-
-func validateID(value string) bool {
-	data, err := hex.DecodeString(value)
-	if err != nil {
-		return false
-	}
-	sign := signData(data[:16])
-	return hmac.Equal(sign, data[16:])
 }
