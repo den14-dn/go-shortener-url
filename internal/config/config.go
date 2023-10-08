@@ -6,14 +6,21 @@ import (
 	"github.com/caarlos0/env/v7"
 )
 
+// Config contains the necessary parameters for the service to work.
 type Config struct {
-	ServerAddress   string `env:"SERVER_ADDRESS"`
-	BaseURL         string `env:"BASE_URL"`
+	// ServerAddress is the HTTP server startup address
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	// BaseURL is the address of the resulting shortened URL.
+	BaseURL string `env:"BASE_URL"`
+	// FileStoragePath path to the file on the disk for storing data.
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	AddrConnDB      string `env:"DATABASE_DSN"`
+	// AddrConnDB database connection address.
+	AddrConnDB string `env:"DATABASE_DSN"`
+	// ProfilerAddress is the address to start the profiler HTTP server.
 	ProfilerAddress string `env:"PROFILER_ADDRESS"`
 }
 
+// NewConfig initializes the Config structure.
 func NewConfig() (*Config, error) {
 	cfg := Config{
 		ServerAddress: "localhost:8080",

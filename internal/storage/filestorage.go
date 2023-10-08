@@ -9,12 +9,14 @@ import (
 	"strings"
 )
 
+// FileStorage manages the storage of data in a file on disk.
 type FileStorage struct {
 	file       *os.File
 	writer     *bufio.Writer
 	memStorage *MemStorage
 }
 
+// NewFileStorage is a constructor for the FileStorage structure.
 func NewFileStorage(ctx context.Context, filePath string) *FileStorage {
 	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
 	file, _ := os.OpenFile(filePath, flag, 0777)
@@ -26,6 +28,7 @@ func NewFileStorage(ctx context.Context, filePath string) *FileStorage {
 	}
 }
 
+// Add writes the original and its shortened URL by user id.
 func (f *FileStorage) Add(ctx context.Context, userID, shortURL, origURL string) error {
 	_, errUser := f.memStorage.GetByUser(ctx, userID)
 	_, errURLs := f.memStorage.Get(ctx, shortURL)
@@ -46,19 +49,23 @@ func (f *FileStorage) Add(ctx context.Context, userID, shortURL, origURL string)
 	return nil
 }
 
+// Get retrieves the original URL by its shortened value. In-memory storage is used for acceleration.
 func (f *FileStorage) Get(ctx context.Context, shortURL string) (string, error) {
 	return f.memStorage.Get(ctx, shortURL)
 }
 
+// GetByUser gets a map of URLs by user ID. In-memory storage is used for acceleration.
 func (f *FileStorage) GetByUser(ctx context.Context, userID string) (map[string]string, error) {
 	return f.memStorage.GetByUser(ctx, userID)
 }
 
+// CheckStorage checks for the presence of a file.
 func (f *FileStorage) CheckStorage(_ context.Context) error {
 	_, err := f.file.Stat()
 	return err
 }
 
+// Delete marks the URL as deleted in the file.
 func (f *FileStorage) Delete(ctx context.Context, shortURL string) error {
 	origURL, err := f.memStorage.Get(ctx, shortURL)
 	if err != nil {
@@ -80,6 +87,7 @@ func (f *FileStorage) Delete(ctx context.Context, shortURL string) error {
 	return f.writer.Flush()
 }
 
+// Close closes the file after writing, reading.
 func (f *FileStorage) Close() error {
 	return f.file.Close()
 }

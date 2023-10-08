@@ -1,3 +1,4 @@
+// Package usecase is designed to manage the business logic of the service and its components.
 package usecase
 
 import (
@@ -8,17 +9,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/speps/go-hashids/v2"
 	"golang.org/x/exp/slog"
 
+	"go-shortener-url/internal/pkg/shortener"
 	"go-shortener-url/internal/storage"
 )
 
+// Manager is designed to manage all business logic of the service.
 type Manager struct {
 	store   storage.Storage
 	baseURL string
 }
 
+// New is the constructor for the Manager structure.
 func New(store storage.Storage, baseURL string) *Manager {
 	return &Manager{
 		store:   store,
@@ -26,6 +29,7 @@ func New(store storage.Storage, baseURL string) *Manager {
 	}
 }
 
+// CreateShortURL shortens the original URL and writes to the data store.
 func (m *Manager) CreateShortURL(ctxReq context.Context, originalURL, userID string) (string, error) {
 	const op = "internal.usecase.CreateShortURL"
 
@@ -38,7 +42,7 @@ func (m *Manager) CreateShortURL(ctxReq context.Context, originalURL, userID str
 		return "", err
 	}
 
-	id, err := shortenURL(originalURL)
+	id, err := shortener.ShortenURL(originalURL)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%s.shortenURL: %v\n", op, err))
 		return "", err
@@ -62,6 +66,7 @@ func (m *Manager) CreateShortURL(ctxReq context.Context, originalURL, userID str
 	return shortURL, nil
 }
 
+// GetFullURL from a shortened URL queries the original URL in the data store.
 func (m *Manager) GetFullURL(ctxReq context.Context, shortURL string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctxReq, 1*time.Second)
 	defer cancel()
@@ -80,6 +85,7 @@ func (m *Manager) GetFullURL(ctxReq context.Context, shortURL string) (string, e
 	return originalURL, nil
 }
 
+// GetUserURLs queries the data store to retrieve all shortened URLs by user.
 func (m *Manager) GetUserURLs(ctxReq context.Context, userID string) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(ctxReq, 1*time.Second)
 	defer cancel()
@@ -92,6 +98,7 @@ func (m *Manager) GetUserURLs(ctxReq context.Context, userID string) (map[string
 	return urls, nil
 }
 
+// CheckStorage checks the availability of the data storage.
 func (m *Manager) CheckStorage(ctxReq context.Context) error {
 	ctx, cancel := context.WithTimeout(ctxReq, 1*time.Second)
 	defer cancel()
@@ -99,6 +106,7 @@ func (m *Manager) CheckStorage(ctxReq context.Context) error {
 	return m.store.CheckStorage(ctx)
 }
 
+// ExecDeleting in multiple threads marks shortened URLs as deleted.
 func (m *Manager) ExecDeleting(items []string, userID string) {
 	type keyUserID string
 
@@ -151,18 +159,4 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 
 	close(jobCh)
 	wg.Wait()
-}
-
-func shortenURL(origURL string) (string, error) {
-	hid := hashids.NewData()
-	hid.Salt = origURL
-	hi, err := hashids.NewWithData(hid)
-	if err != nil {
-		return "", err
-	}
-	id, err := hi.Encode([]int{45, 434, 1313, 99})
-	if err != nil {
-		return "", err
-	}
-	return id, nil
 }

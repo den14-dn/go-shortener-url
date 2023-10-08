@@ -1,3 +1,5 @@
+// Package controller is designed to configure the router.
+// It is also intended to describe API method handlers.
 package controller
 
 import (
@@ -11,10 +13,12 @@ import (
 	"go-shortener-url/internal/usecase"
 )
 
+// Server stores a link to the data store being used.
 type Server struct {
 	storage storage.Storage
 }
 
+// New is the constructor for the Server structure.
 func New(m *usecase.Manager) *http.Server {
 	router := configureRouter(m)
 

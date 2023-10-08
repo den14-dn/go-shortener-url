@@ -1,3 +1,4 @@
+// Package sign is designed to sign user data and validate it.
 package sign
 
 import (
@@ -17,6 +18,7 @@ func signData(data []byte) []byte {
 	return h.Sum(nil)
 }
 
+// ValidateID The user ID is validated.
 func ValidateID(value string) bool {
 	data, err := hex.DecodeString(value)
 	if err != nil {
@@ -26,6 +28,7 @@ func ValidateID(value string) bool {
 	return hmac.Equal(sign, data[16:])
 }
 
+// UserID A new user ID is created.
 func UserID() string {
 	id, _ := generateRandom(sizeKey)
 	return hex.EncodeToString(append(id, signData(id)...))

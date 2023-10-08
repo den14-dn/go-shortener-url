@@ -35,6 +35,8 @@ func unzipBody(r *http.Request) (body []byte, err error) {
 	return body, err
 }
 
+// CreateShortURL accepts the URL string to be shortened in the request body.
+// In the response body, returns a shortened URL as a text string.
 func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := unzipBody(r)
@@ -69,6 +71,25 @@ func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// CreateManyShortURL accepts a set of shortening URLs in the request body in the format:
+//
+//	  [
+//	     {
+//		       "correlation_id": "<string identifier>",
+//		       "original_url": "<URL to shorten>"
+//		    },
+//		    ...
+//	  ].
+//
+// The response returns a shortened URL for each URL in the set in the format:
+//
+//	  [
+//		   {
+//		      "correlation_id": "<string identifier from the request object>",
+//		      "short_url": "<resulting shortened URL>"
+//		   },
+//		   ...
+//	  ].
 func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
 	type request struct {
 		ID  string `json:"correlation_id"`
@@ -130,6 +151,8 @@ func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// GetFullURL takes a shortened URL identifier as a URL parameter.
+// The original URL is returned in the Location HTTP header.
 func GetFullURL(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		shortURL := chi.URLParam(r, "id")
@@ -153,6 +176,13 @@ func GetFullURL(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// GetShortByFullURL accepts a JSON object in the request body
+//
+//	{"url":"<original_url>"}
+//
+// and returning an object
+//
+//	{"result":"<shorten_url>"}.
 func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 	type request struct {
 		URL string `json:"url"`
@@ -219,6 +249,15 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// GetUserURLs returns all URLs shortened by the user in the format:
+//
+//	  [
+//		    {
+//		       "short_url": "http://...",
+//		       "original_url": "http://..."
+//		    },
+//		    ...
+//	  ].
 func GetUserURLs(m *usecase.Manager) http.HandlerFunc {
 	type response struct {
 		ShortURL    string `json:"short_url"`
@@ -256,6 +295,7 @@ func GetUserURLs(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// CheckConnDB checks the connection to the database.
 func CheckConnDB(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := m.CheckStorage(r.Context()); err != nil {
@@ -267,6 +307,9 @@ func CheckConnDB(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
+// DeleteURLsByUser accepts a list of shortened URL identifiers to delete in the format:
+//
+//	[ "a", "b", "c", "d", ...].
 func DeleteURLsByUser(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req []string
