@@ -2,10 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"go-shortener-url/internal/config"
-	"go-shortener-url/internal/pkg/sign"
-	"go-shortener-url/internal/storage"
-	"go-shortener-url/internal/usecase"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-shortener-url/internal/config"
+	"go-shortener-url/internal/pkg/sign"
+	"go-shortener-url/internal/storage"
+	"go-shortener-url/internal/usecase"
 )
 
 func TestCreateShortURL(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"io"
 	"net/http"
 
-	"go-shortener-url/internal/usecase"
-
 	"github.com/go-chi/chi/v5"
+
+	"go-shortener-url/internal/usecase"
 )
 
 func unzipBody(r *http.Request) (body []byte, err error) {
