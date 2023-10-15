@@ -19,8 +19,8 @@ import (
 
 func TestCreateShortURL(t *testing.T) {
 	type want struct {
-		statusCode int
 		response   string
+		statusCode int
 	}
 
 	tests := []struct {
@@ -31,22 +31,22 @@ func TestCreateShortURL(t *testing.T) {
 		{
 			name: "positive test",
 			body: strings.NewReader("http://b0alhb3wxki2.yandex.ru/utno35cm95iz/viiqj"),
-			want: want{statusCode: 201, response: "http://localhost:8080/BRRs54UR8ioQ"},
+			want: want{statusCode: http.StatusCreated, response: "http://localhost:8080/BRRs54UR8ioQ"},
 		},
 		{
 			name: "negative test unique url",
 			body: strings.NewReader("http://b0alhb3wxki2.yandex.ru/utno35cm95iz/viiqj"),
-			want: want{statusCode: 409, response: "http://localhost:8080/BRRs54UR8ioQ"},
+			want: want{statusCode: http.StatusConflict, response: "http://localhost:8080/BRRs54UR8ioQ"},
 		},
 		{
 			name: "negative test empty body",
 			body: nil,
-			want: want{statusCode: 500, response: "URL not found"},
+			want: want{statusCode: http.StatusInternalServerError, response: "URL not found"},
 		},
 		{
 			name: "negative test bad URL",
 			body: strings.NewReader("_f34ga4"),
-			want: want{statusCode: 500, response: "invalid URI for request"},
+			want: want{statusCode: http.StatusInternalServerError, response: "invalid URI for request"},
 		},
 	}
 
@@ -80,8 +80,8 @@ func TestCreateShortURL(t *testing.T) {
 
 func TestGetFullURL(t *testing.T) {
 	type want struct {
-		statusCode int
 		location   string
+		statusCode int
 	}
 	tests := []struct {
 		name    string
@@ -144,9 +144,9 @@ func TestGetFullURL(t *testing.T) {
 
 func TestGetShortByFullURL(t *testing.T) {
 	type want struct {
-		statusCode int
-		header     []string
 		response   string
+		header     []string
+		statusCode int
 	}
 
 	tests := []struct {
@@ -253,9 +253,9 @@ func TestGetShortByFullURL(t *testing.T) {
 
 func TestGetUserURLs(t *testing.T) {
 	type want struct {
-		statusCode int
-		header     []string
 		response   string
+		header     []string
+		statusCode int
 	}
 
 	tests := []struct {
@@ -327,9 +327,9 @@ func TestGetUserURLs(t *testing.T) {
 
 func TestCreateManyShortURL(t *testing.T) {
 	type want struct {
-		statusCode int
-		header     []string
 		response   string
+		header     []string
+		statusCode int
 	}
 
 	tests := []struct {
@@ -436,15 +436,15 @@ func TestCreateManyShortURL(t *testing.T) {
 
 func TestDeleteURLsByUser(t *testing.T) {
 	type want struct {
-		statusCode int
 		response   string
+		statusCode int
 	}
 
 	tests := []struct {
-		name   string
-		header []string
 		body   io.Reader
 		want   want
+		name   string
+		header []string
 	}{
 		{
 			name:   "positive test",

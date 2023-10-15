@@ -12,8 +12,11 @@ import (
 	"go-shortener-url/internal/usecase"
 )
 
-func unzipBody(r *http.Request) (body []byte, err error) {
-	var reader io.Reader
+func unzipBody(r *http.Request) ([]byte, error) {
+	var (
+		reader io.Reader
+		body   []byte
+	)
 
 	if r.Header.Get("Content-Encoding") == "gzip" {
 		gz, err := gzip.NewReader(r.Body)
@@ -27,7 +30,7 @@ func unzipBody(r *http.Request) (body []byte, err error) {
 		reader = r.Body
 	}
 
-	body, err = io.ReadAll(reader)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -124,13 +127,15 @@ func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
-		if err := json.Unmarshal(body, &req); err != nil {
+		if err = json.Unmarshal(body, &req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		for _, v := range req {
-			shortURL, err := m.CreateShortURL(r.Context(), v.URL, c.Value)
+			var shortURL string
+
+			shortURL, err = m.CreateShortURL(r.Context(), v.URL, c.Value)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -215,7 +220,7 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
-		if err := json.Unmarshal(body, &req); err != nil {
+		if err = json.Unmarshal(body, &req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -223,9 +228,9 @@ func GetShortByFullURL(m *usecase.Manager) http.HandlerFunc {
 		writeResponse := func(url string, statusCode int) {
 			resp = response{Result: url}
 
-			data, err := json.Marshal(resp)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			data, errMarshal := json.Marshal(resp)
+			if errMarshal != nil {
+				http.Error(w, errMarshal.Error(), http.StatusInternalServerError)
 				return
 			}
 

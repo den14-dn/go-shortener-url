@@ -1,3 +1,4 @@
+// Package shortener using a third party library hashes a string value.
 package shortener
 
 import "github.com/speps/go-hashids/v2"

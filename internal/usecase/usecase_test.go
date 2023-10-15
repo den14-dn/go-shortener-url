@@ -24,15 +24,15 @@ func TestExecDeleting(t *testing.T) {
 		}
 
 		want struct {
-			value string
 			err   error
+			value string
 		}
 
 		test struct {
-			name   string
-			items  []string
-			userID string
 			want   want
+			name   string
+			userID string
+			items  []string
 		}
 	)
 
@@ -78,8 +78,8 @@ func TestExecDeleting(t *testing.T) {
 
 func BenchmarkExecDeleting(b *testing.B) {
 	type test struct {
-		items  []string
 		userID string
+		items  []string
 	}
 
 	store := storage.NewMemStorage()
