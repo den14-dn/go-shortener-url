@@ -7,6 +7,8 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// OsExitCheckAnalyzer describes analysis.Analyzer in which the object identifier,
+// its description and execution function are defined.
 var OsExitCheckAnalyzer = &analysis.Analyzer{
 	Name: "osexitcheck",
 	Doc:  `check for contains expression os.Exit in package main in function main`,
