@@ -31,7 +31,7 @@ import (
 	"honnef.co/go/tools/staticcheck"
 	"honnef.co/go/tools/stylecheck"
 
-	"go-shortener-url/internal/pkg/osexitcheckanalyzer"
+	"go-shortener-url/pkg/osexitcheckanalyzer"
 )
 
 func main() {
