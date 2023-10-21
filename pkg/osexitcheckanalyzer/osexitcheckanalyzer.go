@@ -16,7 +16,7 @@ var OsExitCheckAnalyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	expr := func(x *ast.ExprStmt) bool {
+	isOsExit := func(x *ast.ExprStmt) bool {
 		call, ok := x.X.(*ast.CallExpr)
 		if !ok {
 			return false
@@ -47,7 +47,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			case *ast.FuncDecl:
 				fName = x.Name.Name
 			case *ast.ExprStmt:
-				if fName == "main" && expr(x) {
+				if fName == "main" && isOsExit(x) {
 					pass.Reportf(x.Pos(), "package main in func main contains expression os.Exit")
 				}
 			}
