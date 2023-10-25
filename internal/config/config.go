@@ -1,3 +1,4 @@
+// Package config contains service parameters and setting their values.
 package config
 
 import (

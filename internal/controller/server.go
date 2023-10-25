@@ -9,14 +9,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	mw "go-shortener-url/internal/middleware"
-	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 )
-
-// Server stores a link to the data store being used.
-type Server struct {
-	storage storage.Storage
-}
 
 // New is the constructor for the Server structure.
 func New(m *usecase.Manager) *http.Server {
