@@ -5,7 +5,7 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"go-shortener-url/internal/pkg/osexitcheckanalyzer"
+	"go-shortener-url/pkg/osexitcheckanalyzer"
 )
 
 func TestMyAnalyzer(t *testing.T) {
