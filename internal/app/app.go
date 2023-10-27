@@ -35,6 +35,14 @@ func Start(ctx context.Context) {
 	slog.Info("starting HTTP server go-shortener-url")
 
 	go func() {
+		if cfg.EnableHTTPS {
+			err := srv.ListenAndServeTLS("server.crt", "server.key")
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("failed to start server", err.Error())
+				return
+			}
+		}
+
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
 		}
