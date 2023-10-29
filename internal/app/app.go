@@ -32,6 +32,8 @@ func Start(ctx context.Context) {
 	srv := controller.New(manager)
 	srv.Addr = cfg.ServerAddress
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	slog.Info("starting HTTP server go-shortener-url")
 
 	go func() {
@@ -39,12 +41,14 @@ func Start(ctx context.Context) {
 			err := srv.ListenAndServeTLS("server.crt", "server.key")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				slog.Error("failed to start server", err.Error())
+				cancel()
 				return
 			}
 		}
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
+			cancel()
 		}
 	}()
 
