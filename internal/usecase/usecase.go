@@ -107,7 +107,7 @@ func (m *Manager) CheckStorage(ctxReq context.Context) error {
 }
 
 // ExecDeleting in multiple threads marks shortened URLs as deleted.
-func (m *Manager) ExecDeleting(items []string, userID string) {
+func (m *Manager) ExecDeleting(ctxReq context.Context, items []string, userID string) {
 	type keyUserID string
 
 	var (
@@ -133,17 +133,26 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 
 		go func() {
 			defer wg.Done()
+
 			for shortURL := range jobCh {
-				ctx := context.WithValue(context.Background(), k, userID)
+				ctx, cancel := context.WithTimeout(
+					context.WithValue(ctxReq, k, userID),
+					1*time.Second,
+				)
+
 				err := m.store.Delete(ctx, shortURL)
 				if err != nil {
 					slog.Error("err marking delete shortURL", err)
 				}
+				cancel()
 			}
 		}()
 	}
 
-	urls, err := m.store.GetByUser(context.Background(), userID)
+	ctx, cancel := context.WithTimeout(ctxReq, 1*time.Second)
+	defer cancel()
+
+	urls, err := m.store.GetByUser(ctx, userID)
 	if err != nil || len(urls) == 0 {
 		close(jobCh)
 		return

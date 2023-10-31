@@ -29,5 +29,5 @@ func ExampleManager_ExecDeleting() {
 		return
 	}
 
-	manager.ExecDeleting(items, userID)
+	manager.ExecDeleting(context.Background(), items, userID)
 }

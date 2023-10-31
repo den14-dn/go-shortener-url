@@ -64,7 +64,7 @@ func TestExecDeleting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			manager.ExecDeleting(tt.items, tt.userID)
+			manager.ExecDeleting(context.Background(), tt.items, tt.userID)
 
 			for _, i := range tt.items {
 				shortURL := fmt.Sprintf("%s/%s", baseURL, i)
@@ -108,7 +108,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 
 		b.StartTimer()
 		for _, v := range tests {
-			manager.ExecDeleting(v.items, v.userID)
+			manager.ExecDeleting(context.Background(), v.items, v.userID)
 		}
 	}
 }
