@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"testing"
 	"time"
 
@@ -40,8 +41,8 @@ func TestExecDeleting(t *testing.T) {
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
 
-	deleter := usecase.InitUrlDeleteService(store)
-	deleter.Run(3)
+	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, baseURL)
@@ -93,7 +94,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
 
-	deleter := usecase.InitUrlDeleteService(store)
+	deleter := deleteurl.InitUrlDeleteService(store)
 	if err := deleter.Run(1); err != nil {
 		return
 	}

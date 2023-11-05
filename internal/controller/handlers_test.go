@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -469,8 +470,8 @@ func TestDeleteURLsByUser(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 
-	deleter := usecase.InitUrlDeleteService(store)
-	if err := deleter.Run(3); err != nil {
+	deleter := deleteurl.InitUrlDeleteService(store)
+	if err := deleter.Run(1); err != nil {
 		return
 	}
 	defer deleter.Stop()

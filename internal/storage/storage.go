@@ -7,6 +7,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 )
 
 // Storage describes the contract for working with the data storage.
@@ -27,6 +28,7 @@ func New(ctx context.Context, addrConnDB, pathFileStorage string) Storage {
 	if err != nil {
 		store = NewFileStorage(ctx, pathFileStorage)
 		if err := store.CheckStorage(ctx); err != nil {
+			fmt.Println("came to create storage in memory")
 			store = NewMemStorage()
 		}
 	}

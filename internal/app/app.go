@@ -4,6 +4,7 @@ package app
 import (
 	"context"
 	"errors"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -32,7 +33,7 @@ func Start() {
 	db := storage.New(ctx, cfg.AddrConnDB, cfg.FileStoragePath)
 	defer db.Close()
 
-	deleterURLs := usecase.InitUrlDeleteService(db)
+	deleterURLs := deleteurl.InitUrlDeleteService(db)
 	if err := deleterURLs.Run(workersDeletingURLs); err != nil {
 		slog.Error(err.Error())
 		return

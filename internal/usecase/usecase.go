@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"net/url"
 	"time"
 
@@ -17,15 +18,15 @@ import (
 // Manager is designed to manage all business logic of the service.
 type Manager struct {
 	store       storage.Storage
-	deleterURLs DeleterURLs
+	deleterURLs deleteurl.DeleterURLs
 	baseURL     string
 }
 
 // New is the constructor for the Manager structure.
-func New(store storage.Storage, del DeleterURLs, baseURL string) *Manager {
+func New(store storage.Storage, deleter deleteurl.DeleterURLs, baseURL string) *Manager {
 	return &Manager{
 		store:       store,
-		deleterURLs: del,
+		deleterURLs: deleter,
 		baseURL:     baseURL,
 	}
 }
