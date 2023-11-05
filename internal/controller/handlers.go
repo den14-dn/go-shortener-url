@@ -341,7 +341,7 @@ func DeleteURLsByUser(m *usecase.Manager) http.HandlerFunc {
 			return
 		}
 
-		go m.ExecDeleting(r.Context(), req, c.Value)
+		go m.ExecDeleting(req, c.Value)
 
 		w.WriteHeader(http.StatusAccepted)
 	}

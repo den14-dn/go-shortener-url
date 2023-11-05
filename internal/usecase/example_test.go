@@ -16,7 +16,9 @@ func ExampleManager_ExecDeleting() {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := usecase.InitUrlDeleteService(store)
+	manager := usecase.New(store, deleter, baseURL)
 
 	id, err := shortener.ShortenURL(fullURL)
 	if err != nil {
@@ -29,5 +31,5 @@ func ExampleManager_ExecDeleting() {
 		return
 	}
 
-	manager.ExecDeleting(context.Background(), items, userID)
+	manager.ExecDeleting(items, userID)
 }

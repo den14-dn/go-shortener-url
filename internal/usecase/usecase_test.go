@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,12 @@ func TestExecDeleting(t *testing.T) {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := usecase.InitUrlDeleteService(store)
+	deleter.Run(3)
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, baseURL)
 
 	basics := []basic{
 		{
@@ -64,7 +70,9 @@ func TestExecDeleting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			manager.ExecDeleting(context.Background(), tt.items, tt.userID)
+			manager.ExecDeleting(tt.items, tt.userID)
+
+			time.Sleep(1 * time.Millisecond)
 
 			for _, i := range tt.items {
 				shortURL := fmt.Sprintf("%s/%s", baseURL, i)
@@ -84,7 +92,14 @@ func BenchmarkExecDeleting(b *testing.B) {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := usecase.InitUrlDeleteService(store)
+	if err := deleter.Run(1); err != nil {
+		return
+	}
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, baseURL)
 
 	b.ResetTimer()
 
@@ -108,7 +123,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 
 		b.StartTimer()
 		for _, v := range tests {
-			manager.ExecDeleting(context.Background(), v.items, v.userID)
+			manager.ExecDeleting(v.items, v.userID)
 		}
 	}
 }

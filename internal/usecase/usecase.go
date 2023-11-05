@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sync"
 	"time"
 
 	"golang.org/x/exp/slog"
@@ -17,15 +16,17 @@ import (
 
 // Manager is designed to manage all business logic of the service.
 type Manager struct {
-	store   storage.Storage
-	baseURL string
+	store       storage.Storage
+	deleterURLs DeleterURLs
+	baseURL     string
 }
 
 // New is the constructor for the Manager structure.
-func New(store storage.Storage, baseURL string) *Manager {
+func New(store storage.Storage, del DeleterURLs, baseURL string) *Manager {
 	return &Manager{
-		store:   store,
-		baseURL: baseURL,
+		store:       store,
+		deleterURLs: del,
+		baseURL:     baseURL,
 	}
 }
 
@@ -107,65 +108,29 @@ func (m *Manager) CheckStorage(ctxReq context.Context) error {
 }
 
 // ExecDeleting in multiple threads marks shortened URLs as deleted.
-func (m *Manager) ExecDeleting(ctxReq context.Context, items []string, userID string) {
-	type keyUserID string
+func (m *Manager) ExecDeleting(items []string, userID string) {
 
-	var (
-		countJob = 5
-		size     int
-	)
-
-	if len(items) < countJob {
-		countJob = len(items)
-	}
-
-	size = len(items) / countJob
-	if len(items)%countJob > 0 {
-		size++
-	}
-
-	jobCh := make(chan string, 1)
-	wg := &sync.WaitGroup{}
-
-	k := keyUserID("userID")
-	for i := 0; i < countJob; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			for shortURL := range jobCh {
-				ctx, cancel := context.WithTimeout(
-					context.WithValue(ctxReq, k, userID),
-					1*time.Second,
-				)
-
-				err := m.store.Delete(ctx, shortURL)
-				if err != nil {
-					slog.Error("err marking delete shortURL", err)
-				}
-				cancel()
-			}
-		}()
-	}
-
-	ctx, cancel := context.WithTimeout(ctxReq, 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	urls, err := m.store.GetByUser(ctx, userID)
-	if err != nil || len(urls) == 0 {
-		close(jobCh)
+	if err != nil {
+		slog.Error("usecase.ExecDeleting.GetByUser", err.Error())
+		return
+	} else if len(urls) == 0 {
+		slog.Error("usecase.ExecDeleting.GetByUser: empty arr URLs")
 		return
 	}
+
+	shortURLs := make([]string, 0, len(items))
 
 	for _, item := range items {
 		shortURL := fmt.Sprintf("%s/%s", m.baseURL, item)
 
 		if _, ok := urls[shortURL]; ok {
-			jobCh <- shortURL
+			shortURLs = append(shortURLs, shortURL)
 		}
 	}
 
-	close(jobCh)
-	wg.Wait()
+	m.deleterURLs.Delete(shortURLs, userID)
 }

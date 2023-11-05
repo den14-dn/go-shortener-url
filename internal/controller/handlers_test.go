@@ -52,7 +52,7 @@ func TestCreateShortURL(t *testing.T) {
 
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+	manager := usecase.New(store, nil, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
@@ -104,7 +104,7 @@ func TestGetFullURL(t *testing.T) {
 	}
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+	manager := usecase.New(store, nil, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
@@ -219,7 +219,7 @@ func TestGetShortByFullURL(t *testing.T) {
 
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+	manager := usecase.New(store, nil, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
@@ -296,7 +296,7 @@ func TestGetUserURLs(t *testing.T) {
 
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+	manager := usecase.New(store, nil, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
@@ -402,7 +402,7 @@ func TestCreateManyShortURL(t *testing.T) {
 
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+	manager := usecase.New(store, nil, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
@@ -468,7 +468,14 @@ func TestDeleteURLsByUser(t *testing.T) {
 
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
-	manager := usecase.New(store, cfg.BaseURL)
+
+	deleter := usecase.InitUrlDeleteService(store)
+	if err := deleter.Run(3); err != nil {
+		return
+	}
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, cfg.BaseURL)
 	srv := New(manager)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
