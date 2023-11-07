@@ -34,10 +34,7 @@ func Start() {
 	defer db.Close()
 
 	deleterURLs := deleteurl.InitUrlDeleteService(db)
-	if err := deleterURLs.Run(workersDeletingURLs); err != nil {
-		slog.Error(err.Error())
-		return
-	}
+	go deleterURLs.Run(workersDeletingURLs)
 
 	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 

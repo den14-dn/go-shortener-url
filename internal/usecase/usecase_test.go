@@ -42,7 +42,7 @@ func TestExecDeleting(t *testing.T) {
 	baseURL := "http://localhost:8080"
 
 	deleter := deleteurl.InitUrlDeleteService(store)
-	deleter.Run(1)
+	go deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, baseURL)
@@ -95,9 +95,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 	baseURL := "http://localhost:8080"
 
 	deleter := deleteurl.InitUrlDeleteService(store)
-	if err := deleter.Run(1); err != nil {
-		return
-	}
+	go deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, baseURL)

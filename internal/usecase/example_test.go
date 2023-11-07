@@ -19,7 +19,7 @@ func ExampleManager_ExecDeleting() {
 	baseURL := "http://localhost:8080"
 
 	deleter := deleteurl.InitUrlDeleteService(store)
-	deleter.Run(1)
+	go deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, baseURL)
