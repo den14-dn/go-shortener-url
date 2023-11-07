@@ -471,7 +471,7 @@ func TestDeleteURLsByUser(t *testing.T) {
 	store := storage.NewMemStorage()
 
 	deleter := deleteurl.InitUrlDeleteService(store)
-	go deleter.Run(1)
+	deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, cfg.BaseURL)
