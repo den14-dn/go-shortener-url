@@ -19,6 +19,8 @@ type Config struct {
 	AddrConnDB string `env:"DATABASE_DSN"`
 	// ProfilerAddress is the address to start the profiler HTTP server.
 	ProfilerAddress string `env:"PROFILER_ADDRESS"`
+	// EnableHTTPS defines whether HTTPS is enabled on the web server.
+	EnableHTTPS bool `env:"ENABLE_HTTPS"`
 }
 
 // NewConfig initializes the Config structure.
@@ -42,5 +44,6 @@ func setConfigWithArgs(cfg *Config) {
 	flag.StringVar(&cfg.BaseURL, "b", cfg.BaseURL, "base URL")
 	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path")
 	flag.StringVar(&cfg.AddrConnDB, "d", cfg.AddrConnDB, "address connection database")
+	flag.BoolVar(&cfg.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
 	flag.Parse()
 }
