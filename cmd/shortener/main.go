@@ -1,11 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-
-	"os/signal"
-	"syscall"
 
 	"go-shortener-url/internal/app"
 )
@@ -21,8 +17,5 @@ func main() {
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGKILL)
-	defer stop()
-
-	app.Start(ctx)
+	app.Start()
 }

@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +40,12 @@ func TestExecDeleting(t *testing.T) {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter.Run(1)
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, baseURL)
 
 	basics := []basic{
 		{
@@ -66,6 +73,8 @@ func TestExecDeleting(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			manager.ExecDeleting(tt.items, tt.userID)
 
+			time.Sleep(1 * time.Millisecond)
+
 			for _, i := range tt.items {
 				shortURL := fmt.Sprintf("%s/%s", baseURL, i)
 				v, err := store.Get(context.Background(), shortURL)
@@ -84,7 +93,12 @@ func BenchmarkExecDeleting(b *testing.B) {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter.Run(1)
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, baseURL)
 
 	b.ResetTimer()
 

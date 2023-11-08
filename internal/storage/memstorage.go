@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"sync"
 )
 
 // MemStorage has collections for storing data in memory and data management facilities.
@@ -9,6 +10,7 @@ type MemStorage struct {
 	urls    map[string]string
 	users   map[string][]string
 	deleted map[string]bool
+	mu      sync.RWMutex
 }
 
 // NewMemStorage is the constructor for the MemStorage structure.
@@ -37,6 +39,9 @@ func (m *MemStorage) Get(_ context.Context, shortURL string) (string, error) {
 	if !ok {
 		return "", ErrNotFoundURL
 	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	if _, ok := m.deleted[shortURL]; ok {
 		return "", ErrDeletedURL
@@ -68,6 +73,8 @@ func (m *MemStorage) CheckStorage(_ context.Context) error {
 
 // Delete marks the shortened URL as deleted.
 func (m *MemStorage) Delete(_ context.Context, shortURL string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.deleted[shortURL] = true
 	return nil
 }

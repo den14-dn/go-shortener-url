@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"net/url"
-	"sync"
 	"time"
 
 	"golang.org/x/exp/slog"
@@ -17,15 +17,17 @@ import (
 
 // Manager is designed to manage all business logic of the service.
 type Manager struct {
-	store   storage.Storage
-	baseURL string
+	store       storage.Storage
+	deleterURLs deleteurl.DeleterURLs
+	baseURL     string
 }
 
 // New is the constructor for the Manager structure.
-func New(store storage.Storage, baseURL string) *Manager {
+func New(store storage.Storage, deleter deleteurl.DeleterURLs, baseURL string) *Manager {
 	return &Manager{
-		store:   store,
-		baseURL: baseURL,
+		store:       store,
+		deleterURLs: deleter,
+		baseURL:     baseURL,
 	}
 }
 
@@ -108,55 +110,28 @@ func (m *Manager) CheckStorage(ctxReq context.Context) error {
 
 // ExecDeleting in multiple threads marks shortened URLs as deleted.
 func (m *Manager) ExecDeleting(items []string, userID string) {
-	type keyUserID string
 
-	var (
-		countJob = 5
-		size     int
-	)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-	if len(items) < countJob {
-		countJob = len(items)
-	}
-
-	size = len(items) / countJob
-	if len(items)%countJob > 0 {
-		size++
-	}
-
-	jobCh := make(chan string, 1)
-	wg := &sync.WaitGroup{}
-
-	k := keyUserID("userID")
-	for i := 0; i < countJob; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-			for shortURL := range jobCh {
-				ctx := context.WithValue(context.Background(), k, userID)
-				err := m.store.Delete(ctx, shortURL)
-				if err != nil {
-					slog.Error("err marking delete shortURL", err)
-				}
-			}
-		}()
-	}
-
-	urls, err := m.store.GetByUser(context.Background(), userID)
-	if err != nil || len(urls) == 0 {
-		close(jobCh)
+	urls, err := m.store.GetByUser(ctx, userID)
+	if err != nil {
+		slog.Error("usecase.ExecDeleting.GetByUser", err.Error())
+		return
+	} else if len(urls) == 0 {
+		slog.Error("usecase.ExecDeleting.GetByUser: empty arr URLs")
 		return
 	}
+
+	shortURLs := make([]string, 0, len(items))
 
 	for _, item := range items {
 		shortURL := fmt.Sprintf("%s/%s", m.baseURL, item)
 
 		if _, ok := urls[shortURL]; ok {
-			jobCh <- shortURL
+			shortURLs = append(shortURLs, shortURL)
 		}
 	}
 
-	close(jobCh)
-	wg.Wait()
+	m.deleterURLs.Delete(shortURLs, userID)
 }

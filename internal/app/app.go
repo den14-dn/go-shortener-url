@@ -4,7 +4,10 @@ package app
 import (
 	"context"
 	"errors"
+	"go-shortener-url/internal/pkg/deleteurl"
 	"net/http"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"golang.org/x/exp/slog"
@@ -16,7 +19,8 @@ import (
 )
 
 // Start is the entry point of the application.
-func Start(ctx context.Context) {
+func Start() {
+	var workersDeletingURLs = 2
 
 	cfg, err := config.NewConfig()
 	if err != nil {
@@ -24,10 +28,15 @@ func Start(ctx context.Context) {
 		return
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	db := storage.New(ctx, cfg.AddrConnDB, cfg.FileStoragePath)
 	defer db.Close()
 
-	manager := usecase.New(db, cfg.BaseURL)
+	deleterURLs := deleteurl.InitUrlDeleteService(db)
+	deleterURLs.Run(workersDeletingURLs)
+
+	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 
 	srv := controller.New(manager)
 	srv.Addr = cfg.ServerAddress
@@ -39,12 +48,14 @@ func Start(ctx context.Context) {
 			err := srv.ListenAndServeTLS("server.crt", "server.key")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				slog.Error("failed to start server", err.Error())
+				stop()
 				return
 			}
 		}
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
+			stop()
 		}
 	}()
 
@@ -66,4 +77,6 @@ func Start(ctx context.Context) {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("failed by shutdown HTTP server", err.Error())
 	}
+
+	deleterURLs.Stop()
 }

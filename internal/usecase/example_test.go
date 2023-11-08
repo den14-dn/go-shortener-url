@@ -3,10 +3,11 @@ package usecase_test
 import (
 	"context"
 	"fmt"
+	"go-shortener-url/internal/pkg/deleteurl"
+	"go-shortener-url/internal/usecase"
 
 	"go-shortener-url/internal/pkg/shortener"
 	"go-shortener-url/internal/storage"
-	"go-shortener-url/internal/usecase"
 )
 
 func ExampleManager_ExecDeleting() {
@@ -16,7 +17,12 @@ func ExampleManager_ExecDeleting() {
 
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
-	manager := usecase.New(store, baseURL)
+
+	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter.Run(1)
+	defer deleter.Stop()
+
+	manager := usecase.New(store, deleter, baseURL)
 
 	id, err := shortener.ShortenURL(fullURL)
 	if err != nil {
