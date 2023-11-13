@@ -54,7 +54,7 @@ func TestCreateShortURL(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()
@@ -106,7 +106,7 @@ func TestGetFullURL(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()
@@ -221,7 +221,7 @@ func TestGetShortByFullURL(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()
@@ -298,7 +298,7 @@ func TestGetUserURLs(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()
@@ -404,7 +404,7 @@ func TestCreateManyShortURL(t *testing.T) {
 	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()
@@ -475,7 +475,7 @@ func TestDeleteURLsByUser(t *testing.T) {
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, cfg.BaseURL)
-	srv := New(manager)
+	srv := New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()

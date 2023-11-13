@@ -13,15 +13,15 @@ import (
 )
 
 // New is the constructor for the Server structure.
-func New(m *usecase.Manager) *http.Server {
-	router := configureRouter(m)
+func New(m *usecase.Manager, trustedSubnet string) *http.Server {
+	router := configureRouter(m, trustedSubnet)
 
 	return &http.Server{
 		Handler: router,
 	}
 }
 
-func configureRouter(m *usecase.Manager) chi.Router {
+func configureRouter(m *usecase.Manager, trustedSubnet string) chi.Router {
 	r := chi.NewRouter()
 	r.Use(
 		middleware.Recoverer,
@@ -37,6 +37,10 @@ func configureRouter(m *usecase.Manager) chi.Router {
 		r.Get("/ping", CheckConnDB(m))
 		r.Post("/api/shorten/batch", CreateManyShortURL(m))
 		r.Delete("/api/user/urls", DeleteURLsByUser(m))
+		r.Group(func(r chi.Router) {
+			r.Use(mw.CheckTrustIP(trustedSubnet))
+			r.Get("/api/internal/stats", GetStats(m))
+		})
 	})
 	return r
 }

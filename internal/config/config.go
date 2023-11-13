@@ -25,6 +25,8 @@ type Config struct {
 	EnableHTTPS bool `env:"ENABLE_HTTPS" json:"enable_https"`
 	// Config path to service configuration file.
 	FileConfig string `env:"CONFIG"`
+	// TrustedSubnet classless addressing (CIDR).
+	TrustedSubnet string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // NewConfig initializes the Config structure.
@@ -54,6 +56,7 @@ func setConfigWithArgs(cfg *Config) {
 	flag.StringVar(&cfg.AddrConnDB, "d", cfg.AddrConnDB, "address connection database")
 	flag.BoolVar(&cfg.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
 	flag.StringVar(&cfg.FileConfig, "c", cfg.FileConfig, "service configuration file")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "classless addressing CIDR")
 	flag.Parse()
 }
 
@@ -86,5 +89,9 @@ func setConfigWithFile(cfg *Config) {
 
 	if !cfg.EnableHTTPS || tmp.EnableHTTPS {
 		cfg.EnableHTTPS = tmp.EnableHTTPS
+	}
+
+	if cfg.TrustedSubnet == "" {
+		cfg.TrustedSubnet = tmp.TrustedSubnet
 	}
 }

@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"net/url"
 	"time"
 
 	"golang.org/x/exp/slog"
 
+	"go-shortener-url/internal/pkg/deleteurl"
 	"go-shortener-url/internal/pkg/shortener"
 	"go-shortener-url/internal/storage"
 )
@@ -134,4 +134,12 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 	}
 
 	m.deleterURLs.Delete(shortURLs, userID)
+}
+
+// GetStats accesses the current storage for service operation statistics.
+func (m *Manager) GetStats(ctx context.Context) (cURLs, cUsers int) {
+	ctxWithCancel, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	return m.store.GetStats(ctxWithCancel)
 }

@@ -79,6 +79,11 @@ func (m *MemStorage) Delete(_ context.Context, shortURL string) error {
 	return nil
 }
 
+// GetStats selects data for statistics from maps.
+func (m *MemStorage) GetStats(_ context.Context) (int, int) {
+	return len(m.urls), len(m.users)
+}
+
 // Close is implemented in this structure for compatibility with other data stores.
 func (m *MemStorage) Close() error {
 	return nil
