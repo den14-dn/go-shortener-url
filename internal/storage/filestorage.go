@@ -87,6 +87,11 @@ func (f *FileStorage) Delete(ctx context.Context, shortURL string) error {
 	return f.writer.Flush()
 }
 
+// GetStats uses the implemented function from the in-memory store.
+func (f *FileStorage) GetStats(ctx context.Context) (int, int) {
+	return f.memStorage.GetStats(ctx)
+}
+
 // Close closes the file after writing, reading.
 func (f *FileStorage) Close() error {
 	return f.file.Close()

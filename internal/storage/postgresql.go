@@ -154,6 +154,27 @@ func (d *Postgresql) CheckStorage(ctx context.Context) error {
 	return nil
 }
 
+// GetStats selects data for statistics from the database.
+func (d *Postgresql) GetStats(ctx context.Context) (int, int) {
+	var (
+		countURLs  int
+		countUsers int
+	)
+	query :=
+		`SELECT
+			COUNT(user_id) AS countUsers,
+			COUNT(short_url) AS countURLs
+		FROM users`
+
+	row := d.db.QueryRowContext(ctx, query)
+	err := row.Scan(&countUsers, &countURLs)
+	if err != nil {
+		return 0, 0
+	}
+
+	return countURLs, countUsers
+}
+
 // Close closes the connection to the database.
 func (d *Postgresql) Close() error {
 	return d.db.Close()

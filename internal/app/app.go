@@ -38,7 +38,7 @@ func Start() {
 
 	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 
-	srv := controller.New(manager)
+	srv := controller.New(manager, cfg.TrustedSubnet)
 	srv.Addr = cfg.ServerAddress
 
 	slog.Info("starting HTTP server go-shortener-url")

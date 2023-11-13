@@ -4,11 +4,15 @@ package middleware
 import (
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
 	"go-shortener-url/internal/pkg/sign"
+
+	"golang.org/x/exp/slog"
 )
 
 type gzipWriter struct {
@@ -61,4 +65,41 @@ func Identification(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+type ipChecker struct {
+	trustedSubnet string
+}
+
+func (i ipChecker) handlerFunc(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if i.trustedSubnet == "" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		_, ipNet, err := net.ParseCIDR(i.trustedSubnet)
+		if err != nil {
+			slog.Error(fmt.Sprintf("internal.middlewaer.ipChecker.handlerFunc: %v", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		ipStr := r.Header.Get("X-Real-IP")
+		ip := net.ParseIP(ipStr)
+		if ip == nil || !ipNet.Contains(ip) {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// CheckTrustIP provides a handler function to check if an IP address is part of a trusted subnet.
+func CheckTrustIP(trustedSubnet string) func(next http.Handler) http.Handler {
+	ipChecker := ipChecker{
+		trustedSubnet: trustedSubnet,
+	}
+	return ipChecker.handlerFunc
 }

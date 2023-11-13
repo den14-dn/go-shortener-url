@@ -346,3 +346,26 @@ func DeleteURLsByUser(m *usecase.Manager) http.HandlerFunc {
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
+
+// GetStats provides statistics on the operation of the service for requests from a trusted subnet.
+func GetStats(m *usecase.Manager) http.HandlerFunc {
+	type response struct {
+		Urls  int `json:"urls"`
+		Users int `json:"users"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var resp response
+		resp.Urls, resp.Users = m.GetStats(r.Context())
+
+		data, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
