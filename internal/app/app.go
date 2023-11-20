@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"errors"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -13,7 +12,8 @@ import (
 	"golang.org/x/exp/slog"
 
 	"go-shortener-url/internal/config"
-	"go-shortener-url/internal/controller"
+	"go-shortener-url/internal/server"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 )
@@ -33,27 +33,18 @@ func Start() {
 	db := storage.New(ctx, cfg.AddrConnDB, cfg.FileStoragePath)
 	defer db.Close()
 
-	deleterURLs := deleteurl.InitUrlDeleteService(db)
+	ipChecker := services.InitIpCheckService(cfg.TrustedSubnet)
+
+	deleterURLs := services.InitUrlDeleteService(db)
 	deleterURLs.Run(workersDeletingURLs)
 
 	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 
-	srv := controller.New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-
 	slog.Info("starting HTTP server go-shortener-url")
 
+	restServer := server.NewServer(cfg, manager, ipChecker)
 	go func() {
-		if cfg.EnableHTTPS {
-			err := srv.ListenAndServeTLS("server.crt", "server.key")
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("failed to start server", err.Error())
-				stop()
-				return
-			}
-		}
-
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := restServer.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
 			stop()
 		}
@@ -74,7 +65,7 @@ func Start() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := restServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("failed by shutdown HTTP server", err.Error())
 	}
 

@@ -1,8 +1,7 @@
-package controller
+package httphandlers
 
 import (
 	"fmt"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +13,7 @@ import (
 
 	"go-shortener-url/internal/config"
 	"go-shortener-url/internal/pkg/sign"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 )
@@ -51,12 +51,11 @@ func TestCreateShortURL(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	idUser := sign.UserID()
@@ -103,12 +102,11 @@ func TestGetFullURL(t *testing.T) {
 			want:    want{statusCode: 404, location: ""},
 		},
 	}
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	client := &http.Client{
@@ -218,12 +216,11 @@ func TestGetShortByFullURL(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	idUser := sign.UserID()
@@ -295,12 +292,11 @@ func TestGetUserURLs(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	idUser := sign.UserID()
@@ -401,12 +397,11 @@ func TestCreateManyShortURL(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 	manager := usecase.New(store, nil, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	idUser := sign.UserID()
@@ -467,17 +462,16 @@ func TestDeleteURLsByUser(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{ServerAddress: ":8080", BaseURL: "http://localhost:8080"}
+	cfg := &config.Config{BaseURL: "http://localhost:8080"}
 	store := storage.NewMemStorage()
 
-	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter := services.InitUrlDeleteService(store)
 	deleter.Run(1)
 	defer deleter.Stop()
 
 	manager := usecase.New(store, deleter, cfg.BaseURL)
-	srv := New(manager, cfg.TrustedSubnet)
-	srv.Addr = cfg.ServerAddress
-	ts := httptest.NewServer(srv.Handler)
+	router := NewRouter(manager, nil)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	idUser := sign.UserID()

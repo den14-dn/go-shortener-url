@@ -10,20 +10,20 @@ import (
 
 	"golang.org/x/exp/slog"
 
-	"go-shortener-url/internal/pkg/deleteurl"
 	"go-shortener-url/internal/pkg/shortener"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 )
 
 // Manager is designed to manage all business logic of the service.
 type Manager struct {
 	store       storage.Storage
-	deleterURLs deleteurl.DeleterURLs
+	deleterURLs services.DeleterURLs
 	baseURL     string
 }
 
 // New is the constructor for the Manager structure.
-func New(store storage.Storage, deleter deleteurl.DeleterURLs, baseURL string) *Manager {
+func New(store storage.Storage, deleter services.DeleterURLs, baseURL string) *Manager {
 	return &Manager{
 		store:       store,
 		deleterURLs: deleter,
