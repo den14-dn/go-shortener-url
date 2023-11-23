@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "go-shortener-url/internal/proto";
+
+message ShortenURLRequest {
+  string user_id = 1;
+  string url = 2; // full url
+}
+
+message ShortenURLResponse {
+  string user_id = 1;
+  string url = 2; // short url
+}
+
+message GetFullURLRequest {
+  string url = 1; // short url
+}
+
+message GetFullURLResponse {
+  string url = 1; // full url
+}
+
+message ShortenBatchItemRequest {
+  string id = 1;
+  string url = 2; // full url
+
+}
+
+message ShortenBatchURLsRequest {
+  string user_id = 1;
+  repeated ShortenBatchItemRequest urls = 2; // full urls
+}
+
+message ShortenBatchItemResponse {
+  string id = 1;
+  string url = 2; // short url
+}
+
+message ShortenBatchURLsResponse {
+  string user_id = 1;
+  repeated ShortenBatchItemResponse urls = 2; // short urls
+}
+
+message DeleteURLsRequest {
+  string user_id = 1;
+  repeated string urls = 2; // short urls
+}
+
+message Empty {}
+
+service Shortener {
+  rpc ShortenURL(ShortenURLRequest) returns (ShortenURLResponse);
+  rpc GetFullURL(GetFullURLRequest) returns (GetFullURLResponse);
+  rpc ShortenBatchURLs(ShortenBatchURLsRequest) returns (ShortenBatchURLsResponse);
+  rpc DeleteURLs(DeleteURLsRequest) returns (Empty);
+}

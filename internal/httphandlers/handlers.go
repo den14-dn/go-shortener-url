@@ -27,12 +27,12 @@ func NewRouter(m *usecase.Manager, checker services.IPChecker) chi.Router {
 	)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{id}", GetFullURL(m))
-		r.Post("/", CreateShortURL(m))
+		r.Post("/", ShortenURL(m))
 		r.Post("/api/shorten", GetShortByFullURL(m))
 		r.Get("/api/user/urls", GetUserURLs(m))
 		r.Get("/ping", CheckConnDB(m))
-		r.Post("/api/shorten/batch", CreateManyShortURL(m))
-		r.Delete("/api/user/urls", DeleteURLsByUser(m))
+		r.Post("/api/shorten/batch", ShortenBatchURLs(m))
+		r.Delete("/api/user/urls", DeleteURLs(m))
 		r.Group(func(r chi.Router) {
 			r.Use(mw.CheckTrustIP(checker))
 			r.Get("/api/internal/stats", GetStats(m))
@@ -41,9 +41,9 @@ func NewRouter(m *usecase.Manager, checker services.IPChecker) chi.Router {
 	return r
 }
 
-// CreateShortURL accepts the URL string to be shortened in the request body.
+// ShortenURL accepts the URL string to be shortened in the request body.
 // In the response body, returns a shortened URL as a text string.
-func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
+func ShortenURL(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := unzipBody(r)
 		if err != nil {
@@ -77,7 +77,7 @@ func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
-// CreateManyShortURL accepts a set of shortening URLs in the request body in the format:
+// ShortenBatchURLs accepts a set of shortening URLs in the request body in the format:
 //
 //	  [
 //	     {
@@ -96,7 +96,7 @@ func CreateShortURL(m *usecase.Manager) http.HandlerFunc {
 //		   },
 //		   ...
 //	  ].
-func CreateManyShortURL(m *usecase.Manager) http.HandlerFunc {
+func ShortenBatchURLs(m *usecase.Manager) http.HandlerFunc {
 	type request struct {
 		ID  string `json:"correlation_id"`
 		URL string `json:"original_url"`
@@ -315,10 +315,10 @@ func CheckConnDB(m *usecase.Manager) http.HandlerFunc {
 	}
 }
 
-// DeleteURLsByUser accepts a list of shortened URL identifiers to delete in the format:
+// DeleteURLs accepts a list of shortened URL identifiers to delete in the format:
 //
 //	[ "a", "b", "c", "d", ...].
-func DeleteURLsByUser(m *usecase.Manager) http.HandlerFunc {
+func DeleteURLs(m *usecase.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req []string
 

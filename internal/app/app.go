@@ -6,12 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"golang.org/x/exp/slog"
 
 	"go-shortener-url/internal/config"
+	pb "go-shortener-url/internal/proto"
 	"go-shortener-url/internal/server"
 	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
@@ -40,15 +42,36 @@ func Start() {
 
 	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 
-	slog.Info("starting HTTP server go-shortener-url")
-
 	restServer := server.NewServer(cfg, manager, ipChecker)
-	go func() {
-		if err := restServer.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	grpcServer := pb.NewGRPCServer(manager)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
+	runServer := func(srv server.Server) {
+		go func() {
+			<-ctx.Done()
+
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+			defer cancel()
+
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				slog.Error("failed by shutdown server", err.Error())
+			}
+
+			wg.Done()
+		}()
+
+		if err := srv.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
 			stop()
 		}
-	}()
+	}
+
+	slog.Info("starting server go-shortener-url")
+
+	go runServer(restServer)
+	go runServer(grpcServer)
 
 	if cfg.ProfilerAddress != "" {
 		go func() {
@@ -58,16 +81,7 @@ func Start() {
 		}()
 	}
 
-	<-ctx.Done()
-
-	slog.Info("stopped HTTP server go-shortener-url")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	if err := restServer.Shutdown(shutdownCtx); err != nil {
-		slog.Error("failed by shutdown HTTP server", err.Error())
-	}
+	wg.Wait()
 
 	deleterURLs.Stop()
 }
