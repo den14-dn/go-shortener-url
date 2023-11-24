@@ -1,15 +1,14 @@
-// Package deleteurl describes the management of the URL removal service.
-// The service launches background workers that receive tasks for execution through the channel.
-// The service is stopped by closing the channel.
-package deleteurl
+// Package services contains additional services for the application, such as DeleterURLs, IPChecker.
+package services
 
 import (
 	"context"
-	"go-shortener-url/internal/storage"
 	"sync"
 	"time"
 
 	"golang.org/x/exp/slog"
+
+	"go-shortener-url/internal/storage"
 )
 
 // DeleterURLs describes the URL removal service.
@@ -41,6 +40,7 @@ func InitUrlDeleteService(storage storage.Storage) *UrlDeleteService {
 }
 
 // Run starts the service.
+// Method launches background workers, which receive tasks for execution through the channel.
 func (d *UrlDeleteService) Run(threadWork int) {
 	type keyUserID string
 
@@ -74,7 +74,7 @@ func (d *UrlDeleteService) Delete(items []string, userID string) {
 	}
 }
 
-// Stop stops the service.
+// Stop stops the service by closing the channel.
 func (d *UrlDeleteService) Stop() {
 	close(d.chJob)
 	d.wg.Wait()

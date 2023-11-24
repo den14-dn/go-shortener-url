@@ -17,6 +17,7 @@ type Storage interface {
 	GetByUser(ctx context.Context, userID string) (map[string]string, error)
 	Delete(ctx context.Context, shortURL string) error
 	CheckStorage(ctx context.Context) error
+	GetStats(ctx context.Context) (int, int)
 	Close() error
 }
 

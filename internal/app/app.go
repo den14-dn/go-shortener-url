@@ -4,16 +4,18 @@ package app
 import (
 	"context"
 	"errors"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"net/http"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"golang.org/x/exp/slog"
 
 	"go-shortener-url/internal/config"
-	"go-shortener-url/internal/controller"
+	pb "go-shortener-url/internal/proto"
+	"go-shortener-url/internal/server"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 )
@@ -33,31 +35,43 @@ func Start() {
 	db := storage.New(ctx, cfg.AddrConnDB, cfg.FileStoragePath)
 	defer db.Close()
 
-	deleterURLs := deleteurl.InitUrlDeleteService(db)
+	ipChecker := services.InitIpCheckService(cfg.TrustedSubnet)
+
+	deleterURLs := services.InitUrlDeleteService(db)
 	deleterURLs.Run(workersDeletingURLs)
 
 	manager := usecase.New(db, deleterURLs, cfg.BaseURL)
 
-	srv := controller.New(manager)
-	srv.Addr = cfg.ServerAddress
+	restServer := server.NewServer(cfg, manager, ipChecker)
+	grpcServer := pb.NewGRPCServer(manager)
 
-	slog.Info("starting HTTP server go-shortener-url")
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
 
-	go func() {
-		if cfg.EnableHTTPS {
-			err := srv.ListenAndServeTLS("server.crt", "server.key")
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("failed to start server", err.Error())
-				stop()
-				return
+	runServer := func(srv server.Server) {
+		go func() {
+			<-ctx.Done()
+
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+			defer cancel()
+
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				slog.Error("failed by shutdown server", err.Error())
 			}
-		}
 
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			wg.Done()
+		}()
+
+		if err := srv.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", err.Error())
 			stop()
 		}
-	}()
+	}
+
+	slog.Info("starting server go-shortener-url")
+
+	go runServer(restServer)
+	go runServer(grpcServer)
 
 	if cfg.ProfilerAddress != "" {
 		go func() {
@@ -67,16 +81,7 @@ func Start() {
 		}()
 	}
 
-	<-ctx.Done()
-
-	slog.Info("stopped HTTP server go-shortener-url")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("failed by shutdown HTTP server", err.Error())
-	}
+	wg.Wait()
 
 	deleterURLs.Stop()
 }

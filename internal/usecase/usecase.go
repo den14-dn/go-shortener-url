@@ -5,25 +5,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"net/url"
 	"time"
 
 	"golang.org/x/exp/slog"
 
 	"go-shortener-url/internal/pkg/shortener"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 )
 
 // Manager is designed to manage all business logic of the service.
 type Manager struct {
 	store       storage.Storage
-	deleterURLs deleteurl.DeleterURLs
+	deleterURLs services.DeleterURLs
 	baseURL     string
 }
 
 // New is the constructor for the Manager structure.
-func New(store storage.Storage, deleter deleteurl.DeleterURLs, baseURL string) *Manager {
+func New(store storage.Storage, deleter services.DeleterURLs, baseURL string) *Manager {
 	return &Manager{
 		store:       store,
 		deleterURLs: deleter,
@@ -134,4 +134,12 @@ func (m *Manager) ExecDeleting(items []string, userID string) {
 	}
 
 	m.deleterURLs.Delete(shortURLs, userID)
+}
+
+// GetStats accesses the current storage for service operation statistics.
+func (m *Manager) GetStats(ctx context.Context) (cURLs, cUsers int) {
+	ctxWithCancel, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	return m.store.GetStats(ctxWithCancel)
 }

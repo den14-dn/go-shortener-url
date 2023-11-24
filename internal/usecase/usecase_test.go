@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"go-shortener-url/internal/pkg/deleteurl"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go-shortener-url/internal/pkg/shortener"
+	"go-shortener-url/internal/services"
 	"go-shortener-url/internal/storage"
 	"go-shortener-url/internal/usecase"
 )
@@ -41,7 +41,7 @@ func TestExecDeleting(t *testing.T) {
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
 
-	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter := services.InitUrlDeleteService(store)
 	deleter.Run(1)
 	defer deleter.Stop()
 
@@ -94,7 +94,7 @@ func BenchmarkExecDeleting(b *testing.B) {
 	store := storage.NewMemStorage()
 	baseURL := "http://localhost:8080"
 
-	deleter := deleteurl.InitUrlDeleteService(store)
+	deleter := services.InitUrlDeleteService(store)
 	deleter.Run(1)
 	defer deleter.Stop()
 
